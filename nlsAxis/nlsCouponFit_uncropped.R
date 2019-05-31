@@ -55,7 +55,7 @@ xyCentroid <- c( (axisVector[1]*-centroid[3])/axisVector[3] + centroid[1],
                  (axisVector[2]*-centroid[3])/axisVector[3] + centroid[2],
                  0)
 
-
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis")
 source("alignCoupon.R")
 source("radiusAligned.R")
 
@@ -64,22 +64,23 @@ N <- length(poreCoordinates[,1])
 radiusTarget <- rep(1000, N) # based on assumption an ideal coupon radius is 1000 micro-m
 
 centerAxis <- nls(radiusTarget~radiusAligned(poreCoordinates, centroidX, centroidY, axisVectorX, axisVectorY),
-              start = list(centroidX = xyCentroid[1], centroidY = xyCentroid[2],
-                           axisVectorX = axisVector[1], axisVectorY = axisVector[2]))
+                  start = list(centroidX = xyCentroid[1], centroidY = xyCentroid[2],
+                               axisVectorX = axisVector[1], axisVectorY = axisVector[2]))
 
 
 nlsCoeff <- coef(centerAxis)
 
 
+## compare radiusFinal with radiusInitial
+radiusInitial <- radiusAligned(poreCoordinates, centroid[1], centroid[2], axisVector[1], axisVector[2])
+
 ## run 'radiusAligned' with the optimal parameter values found by nls
 radiusFinal <- radiusAligned(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
                              nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
 
-## compare radiusFinal with radiusInitial
-radiusInitial <- radiusAligned(poreCoordinates, centroid[1], centroid[2], axisVector[1], axisVector[2])
 
-plot(radiusFinal, radiusInitial)
+
+plot(radiusFinal, radiusInitial, main = "uncropped")
 xline(median(radiusFinal), col = "cornflowerblue")
-
 
 
