@@ -19,6 +19,8 @@ radiusAligned <- function(poreCoordinates, centroidX, centroidY, axisVectorX, ax
   
   newCoupon <- alignCoupon(poreCoordinates, centroidGuess, axisGuess)
   
+  saveRDS(newCoupon, "newCoupon.rds") # for surface example plotting
+  
   radius <- sqrt(newCoupon[,1]^2+newCoupon[,2]^2)
   
   return(radius)
