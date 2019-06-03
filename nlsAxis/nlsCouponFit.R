@@ -9,26 +9,37 @@
 ##------------------------------------------------------------------------------------------------------------------------
 
 library(fields)
+library(plyr)
 
 setwd("C:/Users/barna/Documents/Coupons/datasets")
-
+load("couponData.rda") #just to get list of polar angles--maybe clean up in future
+rm(couponStrain)
+rm(couponStress)
 poreData <- readRDS("porosityData.rds")
 
 
-## select coupon number
-#n = 4
-nVec <- c(4, 12, 15, 17,22,30,31,37,41,43,44,45,51,54,56,57)
+# store radii for iteration comparison
+radiusFirstIter <- list()
+radiusLastIter <-  list()
 
-medianRadius <- rep(NA, length(nVec))
+
 j = 1
 
-for(n in nVec){
+for(n in 1:58){
+  
+  ## initial radius guess
+  r = 1000 # based on ideal coupon radius of 1000 micor-meters
+  ## tolerance for radius diff
+  tol = 0.001
+  diffMedians = 100
 
 ordered <- order(poreData[[n]]$comZ)
 
 comX <- poreData[[n]]$comX[ordered]
 comY <- poreData[[n]]$comY[ordered]
 comZ <- poreData[[n]]$comZ[ordered]
+
+#plot3d(comX, comY, comZ, type = "s", size = 0.35)
 
 deciles <- quantile(comZ, prob = seq(0, 1, length = 11), type = 5)
 
@@ -39,6 +50,7 @@ poreCoordinates <- cbind( comX,
                           comY,
                           comZ)
 
+oldCoupon <- poreCoordinates # to save the orginial coords for 3d plotting
 
 ## get centers of mass for upper and lower half of the coupon to 
 ## compute axisVector, which is the direction vector for 
@@ -71,7 +83,9 @@ source("radiusAligned.R")
 
 
 N <- length(poreCoordinates[,1])
-radiusTarget <- rep(1000, N) # based on assumption an ideal coupon radius is 1000 micro-m
+
+while (diffMedians > tol){
+radiusTarget <- rep(r, N) 
 
 centerAxis <- nls(radiusTarget~radiusAligned(poreCoordinates, centroidX, centroidY, axisVectorX, axisVectorY),
               start = list(centroidX = xyCentroid[1], centroidY = xyCentroid[2],
@@ -88,15 +102,50 @@ radiusFinal <- radiusAligned(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["c
                              nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
 
 
-plot(radiusFinal, radiusInitial, main = "cropped")
+# store the initial median for comaprison (first iteration)
+ifelse(diffMedians == 100, radiusFirstIter[[j]] <- radiusFinal, NA) 
+
+
+plot(radiusFinal, radiusInitial, main = paste(r))
 xline(median(radiusFinal), col = "cornflowerblue")
 
-medianRadius[j] <- (median(radiusFinal))
+
+diffMedians <- abs(r - median(radiusFinal))
+
+r <- median(radiusFinal)
+
+print(j)
+
+if(j==23){break}
+} # end of while loop
+
+# store the final median for comparison (last iteration)
+radiusLastIter[[j]] <- radiusFinal
 j = j+1
-}
+
+## store the old coupon coordinates, the "new" rotated coupon coords, and the nls coeff
+## useful for generating surface plots and histograms for each coupon
+source("newCoupon.R")
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis/couponCaseStudies/caseStudyData")
+newCoupon <- newCoupon(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
+                       nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
+
+save(oldCoupon, newCoupon, nlsCoeff, file = paste0("nlsCoupon", n, ".rda"))
+
+} # end of for loop
 
 
-plot(nVec, medianRadius, type = "b", pch = 20)
+radiusFirstIter <- data.frame(lapply(radiusFirstIter, "length<-", max(lengths(radiusFirstIter))))
+names(radiusFirstIter) <- 1:58
 
-#saveRDS(nlsCoeff, "nlsCoeff.rds") # for surface plotting
+
+radiusLastIter <- data.frame(lapply(radiusLastIter, "length<-", max(lengths(radiusLastIter))))
+names(radiusLastIter) <- 1:58
+
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis")
+save(radiusFirstIter, radiusLastIter, file = "radiusIterations.rda")
+
+
+
+
 
