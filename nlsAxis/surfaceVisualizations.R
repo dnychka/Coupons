@@ -1,12 +1,24 @@
-
+## 
+## 3 June 2019
+##
+## Details: Test coupons, Inconel 718 Plate 02-Build 01
+##
+##
+## create 3d plots of select coupons, visulize both nls center axis and 
+## ideal cylinder surface
+## Also create unwrapped surface plots of coupon
+##
+##------------------------------------------------------------------------------------------------------------------------
 
 library(rgl)
 library(conicfit)
+library(fields)
+library(useful)
+
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis/couponCaseStudies/caseStudyData")
 
 
-newCoupon <- readRDS("newCoupon.rds")
-nlsCoeff <- readRDS("nlsCoeff.rds")
-
+load("nlsCoupon4.rda")
 
  
 ## calculate points on ideal coupon surface
@@ -19,6 +31,15 @@ xyzcoord <- cbind(rep(circXY[,1], 200), rep(circXY[,2],200), rep(circZ, each = 1
 
 idealCyl <- cylinder3d(center = xyzcoord, radius = 2, closed = TRUE)
 
+open3d()
+par3d(cex=0.7)
+plot3d(oldCoupon[,1],
+       oldCoupon[,2],
+       oldCoupon[,3],
+       type = "s", size = 0.45,
+       xlab = " ", ylab = " ", zlab = " ")
+
+open3d()
 par3d(cex=0.7)
 plot3d(newCoupon[,1],
        newCoupon[,2],
@@ -34,37 +55,17 @@ shade3d(idealCyl, col = "cornflowerblue")
 
 
 
-# plot3d(poreCoordinatesCrop[,1], poreCoordinatesCrop[,2], poreCoordinatesCrop[,3], type = "s", size = 0.45)
-# points3d(poreCoordinates[,1], poreCoordinates[,2], poreCoordinates[,3], col = "magenta")
-# 
-# points3d(centroid[1], centroid[2], centroid[3], col = "violetred1", size = 4)
-# points3d(xyCentroid[1], xyCentroid[2], xyCentroid[3], col = "cornflowerblue", size = 4)
-# lines3d(rbind(centroid, xyCentroid))
+## --------------------------------------------------
+## unzipped coupon surface
 
 
+polar <- cart2pol(newCoupon[,1], newCoupon[,2])
 
-# centroidX <- nlsCoeff["centroidX"]
-# centroidY <- nlsCoeff["centroidY"]
-# axisVectorX <- nlsCoeff["axisVectorX"]
-# axisVectorY <- nlsCoeff["axisVectorY"]
-
-
-
+plot(polar$theta, newCoupon[,3], 
+     col = color.scale(polar$r, zlim = c(1,1172)), pch = 16,
+     main = "surface plot, coupon 9 polar angle 90",
+     xlab = "angle (radians)", ylab = "z axis")
 
 
-# A trefoil knot
-open3d()
-theta <- seq(0, 2*pi, len = 25)
-knot <- cylinder3d(
-  center = cbind(
-    sin(theta) + 2*sin(2*theta), 
-    2*sin(3*theta), 
-    cos(theta) - 2*cos(2*theta)),
-  e1 = cbind(
-    cos(theta) + 4*cos(2*theta), 
-    6*cos(3*theta), 
-    sin(theta) + 4*sin(2*theta)),
-  radius = 0.8, 
-  closed = TRUE)
-
-shade3d(addNormals(subdivision3d(knot, depth = 2)), col = "green") 
+#max coupon radius is 1328.943, but setting this as zlim makes
+#surface plots mostly yellow and hard to read
