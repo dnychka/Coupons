@@ -1,3 +1,5 @@
+## 6/13/2019
+##
 ##
 ##
 ## construct a test case for the 45 degree slice project
@@ -7,14 +9,11 @@
 library(conicfit)
 library(rgl)
 
+numLayer <- seq(100,20,by=-5)
 
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/couponCaseStudies/caseStudyData")
-load("nlsCoupon4.rda")
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/datasets")
-load("radiusIterations.rda") #to get median radius from nls fit
-
+for(l in numLayer){
 # calc points on a 45 degree line
-x = seq(0,4000,by = 200)
+x = seq(0,4000,by = l)
 y = rep(0, length(x))
 z = x
 
@@ -39,35 +38,24 @@ ellipseStack <- rbind(ellipseStack, pts)
 
 }
 
-plot(ellipseStack[1:25,1:2])
-points(ellipseStack[26:50, 1:2], pch = 20)
-
-plot(ellipseStack[,1:2])
-plot(ellipseStack[,1], ellipseStack[,3])
-
-axes3d(edges = "bbox")
-points3d(ellipseStack[,1],ellipseStack[,2],ellipseStack[,3], size = 0.45)
-
-
-hist(ellipseStack[,3], breaks = 90, col = "grey30")
-
-
 aboutY <- function(phi) {matrix( c(cos(phi), 0, sin(phi), 0, 1, 0, -sin(phi), 0, cos(phi)), 3, 3)}
 
-phi <- -41*pi/180
+aboutZ <- function(theta) {matrix( c(cos(theta), sin(theta), 0, -sin(theta), cos(theta), 0, 0, 0, 1), 3, 3 )}
 
-Ry <- aboutY(phi)
+theta <- -41*pi/180 #rotate the coupon so it's almost upright to match the 
+                    #usual orientation of the actual coupons. Works better with nls too
 
-turnedStack <- ellipseStack %*% Ry
+Ry <- aboutY(theta)
 
-plot(turnedStack[,1], turnedStack[,3])
+turnedStack <- ellipseStack %*% Ry 
 
-axes3d(edges = "bbox", labels = TRUE)
-plot3d(turnedStack[,1],turnedStack[,2],turnedStack[,3], size = 2)
-
-#saveRDS(ellipseStack, "testEllipse.rda")
-
-
+## ----------------------------------------------------------------------
+## modified version of nlsCouponFit.R
+## removed while loop--since the radius of the ellipse is set,
+## nls finds the optimal orientation quite fast and there's zero
+## distance between the ellipse points and the target radius,
+## casuing the step size to be reduced past minimum threshold
+## ----------------------------------------------------------------------
 
 deciles <- quantile(turnedStack[,3], prob = seq(0, 1, length = 11), type = 5)
 
@@ -85,7 +73,6 @@ poreCoordinates <- cbind( comX,
 
 oldCoupon <- poreCoordinates # to save the orginial coords for 3d plotting
 
-plot3d(oldCoupon[,1], oldCoupon[,2], oldCoupon[,3], type = "s", size = 0.45)
 ## get centers of mass for upper and lower half of the coupon to 
 ## compute axisVector, which is the direction vector for 
 ## the initial axis estimate
@@ -113,21 +100,6 @@ xyCentroid <- c( (axisVector[1]*-centroid[3])/axisVector[3] + centroid[1],
                  0)
 
 
-
-
-circZ <- seq(0, max(poreCoordinates[,3]), length.out = 200)
-
-plot3d(poreCoordinates[,1], poreCoordinates[,2], poreCoordinates[,3], type = "s", size = 0.45)
-points3d(centroid[1], centroid[2], centroid[3], size = 3, col = "tomato")
-points3d(xyCentroid[1], xyCentroid[2], xyCentroid[3], size = 3, col = "magenta")
-lines3d(axisVector[1],
-        axisVector[2],
-        circZ, col = "darkorange",
-        lwd = 3)
-
-
-j = 1
-
 ## initial radius guess
 r = 1000 # based on ideal coupon radius of 1000 micor-meters
 
@@ -147,30 +119,15 @@ N <- length(poreCoordinates[,1])
   
   nlsCoeff <- coef(centerAxis)
   
-  ## compare radiusFinal with radiusInitial
-  radiusInitial <- radiusAligned(poreCoordinates, centroid[1], centroid[2], axisVector[1], axisVector[2])
-  
-  ## run 'radiusAligned' with the optimal parameter values found by nls
-  radiusFinal <- radiusAligned(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
-                               nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
-  
-  
-  # store the initial median for comaprison (first iteration)
-  #ifelse(diffMedians == 100, radiusFirstIter[[j]] <- radiusFinal, NA) 
-  
-  
-  plot(radiusFinal, radiusInitial, main = paste(r))
-  xline(median(radiusFinal), col = "cornflowerblue")
-  
   radiusLastIter <- radiusFinal
 
 
 ## store the old coupon coordinates, the "new" rotated coupon coords, and the nls coeff
 ## useful for generating surface plots and histograms for each coupon
 source("newCoupon.R")
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/couponCaseStudies/caseStudyData")
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis/45degreeSlice/45degreeData")
 newCoupon <- newCoupon(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
                        nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
-n="test"
-save(oldCoupon, newCoupon, nlsCoeff, radiusLastIter, file = paste0("nlsCoupon", n, ".rda"))
 
+save(oldCoupon, newCoupon, nlsCoeff, radiusLastIter, file = paste0(l,"spacingSyn45.rda"))
+}
