@@ -14,19 +14,16 @@
 
 
 library(pracma)
-library(useful)
 library(rgl)
 library(fields)
-
-
+library(FSA)
 
 aboutY <- function(phi) {matrix( c(cos(phi), 0, sin(phi), 0, 1, 0, -sin(phi), 0, cos(phi)), 3, 3)}
 
 aboutZ <- function(theta) {matrix( c(cos(theta), sin(theta), 0, -sin(theta), cos(theta), 0, 0, 0, 1), 3, 3 )}
 
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/45degreeSlice/45degreeData")
+setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData")
 
- 
 numLayer <- seq(100,5,by=-5)
 
 for(n in numLayer){
