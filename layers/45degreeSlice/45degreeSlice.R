@@ -62,40 +62,55 @@ for(n in numLayer){
 
     # open3d()
     # par3d(cex=0.7)
-    # plot3d(RzyCoupon[,1],
+    # points3d(RzyCoupon[,1],
     #        RzyCoupon[,2],
     #        RzyCoupon[,3],
-    #        type = "s", size = 0.25,
+    #        size = 2,
     #        xlab = "x", ylab = "y", zlab = "z")
 
     h<-hist(~RzyCoupon[,3], w=n/10, plot = FALSE)
     #col = "darkgrey", main = paste0("z axis rotation (radians) = ",round(theta,3)))
 
-    histSave[[i]] <- h$counts
+    histSave[[i]] <- rbind(h$counts, h$mids)
     
     i = i + 1
     
   }
 
+  
+##
+## find the periodogram that has meaningful frequency spikes
+##
+  
+findTheta <- rep(NA,length(angleDouble))
+frDt <- list()
+Dtlen <- rep(NA, length(angleDouble))
 
   for(m in 1:2){
+    
+  xGrid <- seq(min(histSave[[m]][2,]), max(histSave[[m]][2,]), length.out = length(histSave[[m]][1,]))
   
-  frDt <- fft(histSave[[m]]-mean(histSave[[m]]))
+  lowpass <- splint(histSave[[m]][2,], histSave[[m]][1,], xGrid, lambda = 50)
   
-  Dtlen <- length(histSave[[1]])
+  frDt[[m]] <- fft(histSave[[m]][1,]-lowpass)
   
-  Fr <- 1:Dtlen/Dtlen
-  P <- Mod(2*frDt/Dtlen)^2
+  Dtlen[m] <- length(histSave[[1]][1,])
   
-  plot(Fr[1:(Dtlen/2)],P[1:(Dtlen/2)],  type = "l", main = paste0("layers",n,"_",m))
-  firstHarmonic <- which.max(P[1:(Dtlen/2)])
-  xline(Fr[firstHarmonic], col = "grey", lty = 3)
+  Fr <- 1:Dtlen[m]/Dtlen[m]
+  P <- Mod(2*frDt[[m]]/Dtlen[m])^2
   
-  #h$breaks
+  findTheta[m] <- median(scale(P[1:(Dtlen[m]/2)], scale = TRUE))
   
-  Fr[firstHarmonic] 
-  #interp: every 10 bins we have a full cycle. Each binwidth is 10,
-  #and the coupon has a layer spacing of 100 = checks out
   }
+
+
+ind <- which.max(findTheta)
+
+Fr <- 1:Dtlen[ind]/Dtlen[ind]
+P <- Mod(2*frDt[[ind]]/Dtlen[ind])^2
+
+plot(Fr[1:(Dtlen[ind]/2)],P[1:(Dtlen[ind]/2)],  type = "l", main = paste0("layers spaced ",n," apart"),
+     ylab = "strength", xlab = "layer frequency")
+
 }
 
