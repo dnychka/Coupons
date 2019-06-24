@@ -18,6 +18,9 @@ library(rgl)
 library(fields)
 library(FSA)
 
+setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice")
+source("threshold.R")
+
 aboutY <- function(phi) {matrix( c(cos(phi), 0, sin(phi), 0, 1, 0, -sin(phi), 0, cos(phi)), 3, 3)}
 
 aboutZ <- function(theta) {matrix( c(cos(theta), sin(theta), 0, -sin(theta), cos(theta), 0, 0, 0, 1), 3, 3 )}
@@ -26,9 +29,21 @@ setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData")
 
 numLayer <- seq(100,5,by=-5)
 
+angleSeq <- seq(0, 2*pi, by = pi/20) #test out a sequence of theta
+angleDouble <- c(pi,2*pi) #for testing synthetics
+
+
+j=1
+relSignal <- matrix(NA, nrow = length(angleSeq), ncol = length(numLayer))
+
+
+
 for(n in numLayer){
   
-  load(paste0(n,"spacingSyn45.rda"))
+  print(n)
+  
+  #load(paste0(n,"spacingSyn45.rda"))
+  load(paste0(n,"spacingNoLayer.rda"))
   
   # center the coupon
   centerCoupon <- cbind(scale(newCoupon[,1], center = TRUE, scale = FALSE),
@@ -38,15 +53,13 @@ for(n in numLayer){
   
 ## ---------------------------------------------------------------
 ## start of for loop for angle Grid
-  
-  #angleSeq <- seq(0, 2*pi, by = pi/20) #test out a sequence of theta
-  angleDouble <- c(pi,2*pi) #for testing synthetics
+
   
   histSave <- list()
   
   i = 1
   
-  for(theta in angleDouble){
+  for(theta in angleSeq){
     
     Rz <- aboutZ(theta)
     
@@ -70,6 +83,9 @@ for(n in numLayer){
 
     h<-hist(~RzyCoupon[,3], w=n/10, plot = FALSE)
     #col = "darkgrey", main = paste0("z axis rotation (radians) = ",round(theta,3)))
+     
+    # h<-hist(~RzyCoupon[,3], w=n/10,
+    # col = "darkgrey", main = paste0("z axis rotation (radians) = ",round(theta,3), " ", i), ylim = c(0,25))
 
     histSave[[i]] <- rbind(h$counts, h$mids)
     
@@ -82,11 +98,16 @@ for(n in numLayer){
 ## find the periodogram that has meaningful frequency spikes
 ##
   
-findTheta <- rep(NA,length(angleDouble))
+findTheta <- rep(NA,length(angleSeq))
 frDt <- list()
-Dtlen <- rep(NA, length(angleDouble))
+Dtlen <- rep(NA, length(angleSeq))
 
-  for(m in 1:2){
+high <- rep(NA, length(angleSeq))
+
+threshold <- 10
+influence <- 0
+
+  for(m in 1:length(angleSeq)){
     
   xGrid <- seq(min(histSave[[m]][2,]), max(histSave[[m]][2,]), length.out = length(histSave[[m]][1,]))
   
@@ -96,21 +117,43 @@ Dtlen <- rep(NA, length(angleDouble))
   
   Dtlen[m] <- length(histSave[[1]][1,])
   
-  Fr <- 1:Dtlen[m]/Dtlen[m]
-  P <- Mod(2*frDt[[m]]/Dtlen[m])^2
+  Fr <- (1:Dtlen[m]/Dtlen[m])[1:(Dtlen[m]/2)]
+  P <- (Mod(2*frDt[[m]]/Dtlen[m])^2)[1:(Dtlen[m]/2)]
   
-  findTheta[m] <- median(scale(P[1:(Dtlen[m]/2)], scale = TRUE))
+  # plot(Fr,  P,  type = "l", main = paste0("layers spaced ",n," apart", " ", m),
+  #      ylab = "strength", xlab = "layer frequency", ylim = c(0,1.5))
+   
+  lag <- length(Fr)/10
+  
+  peak <- findFreq(P,lag,threshold,influence)
+  
+  high[m] <- (max(P[which(peak$signals==1)]))
+  
+  #relSignal[m,j] <- sum(P[which(peak$signals==1)])/sum(P)
   
   }
 
+# plot(high, pch = 20)
 
-ind <- which.max(findTheta)
+ind <- which.max(high)
 
-Fr <- 1:Dtlen[ind]/Dtlen[ind]
-P <- Mod(2*frDt[[ind]]/Dtlen[ind])^2
+Fr <- (1:Dtlen[ind]/Dtlen[ind])[1:(Dtlen[ind]/2)]
+P <- (Mod(2*frDt[[ind]]/Dtlen[ind])^2)[1:(Dtlen[ind]/2)]
 
-plot(Fr[1:(Dtlen[ind]/2)],P[1:(Dtlen[ind]/2)],  type = "l", main = paste0("layers spaced ",n," apart"),
-     ylab = "strength", xlab = "layer frequency")
+# plot(Fr,  P,  type = "l", main = paste0("layers spaced ",n," apart"),
+#      ylab = "strength", xlab = "layer frequency")
+
+
+
+j = j+1
 
 }
+
+
+matplot(t(relSignal), pch=20, col = "black", xaxt = "n",
+        xlab = "layer spacing", ylab = "sum(peaks)/sum(all points)", main = "relative peak strength")
+points(1:20, apply(relSignal, 2, max), pch = 16, col = "mediumturquoise")
+axis(1,at=c(1,5,10,15,20), labels = c("100", "80", "55", "30", "5"))
+
+
 
