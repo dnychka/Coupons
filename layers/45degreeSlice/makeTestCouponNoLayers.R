@@ -6,19 +6,26 @@
 ## NO LAYERS
 ## ------------------------------------------------------
 
+setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHyp")
 
 library(conicfit)
 library(rgl)
 
-numLayer <- seq(100,5,by=-5)
+# numLayer <- seq(100,5,by=-5)
 
-for(l in numLayer){
+s <- 5
+
+numPore <- length(seq(0,4000,by = s))
+
+dense <- numPore*25 #find density of pores in layered version of coupon
+
+for(l in 49:50){
   # calc points on a 45 degree line
-  x = seq(0,4000,by = l)
+  x = runif(dense, 0, 4000)
   y = rep(0, length(x))
   
-  noise <- runif(length(x), -l+.25*l, l+.25*l)
-  z = x + noise
+  noise <- runif(length(x), 70, 100)
+  z = x
 
   
   
@@ -26,17 +33,17 @@ for(l in numLayer){
   a = 814*sec(phi) #major axis
   b = 814 #minor axis
   
-  pts <- matrix(NA, nrow = 25, ncol = 3)
-  pts[,1:2] <- calculateEllipse(x[1],y[1],a,b, steps = 25, randomDist = TRUE)
-  pts[,3] <- rep(z[1], 25)
+  pts <- matrix(NA, nrow = 1, ncol = 3)
+  pts[,1:2] <- calculateEllipse(x[1],y[1],a,b, steps = 1, randomDist = TRUE)
+  pts[,3] <- z[1]
   
   ellipseStack <- pts
   
   for(i in 2:length(x)){
     
-    pts <- matrix(NA, nrow = 25, ncol = 3)
-    pts[,1:2] <- calculateEllipse(x[i],y[i],a,b, steps = 25, randomDist = TRUE)
-    pts[,3] <- rep(z[i], 25)
+    pts <- matrix(NA, nrow = 1, ncol = 3)
+    pts[,1:2] <- calculateEllipse(x[i],y[i],a,b, steps = 1, randomDist = TRUE)
+    pts[,3] <- z[i]
     
     ellipseStack <- rbind(ellipseStack, pts)
     
@@ -125,7 +132,7 @@ for(l in numLayer){
   centerAxis <- nls(radiusTarget~radiusAligned(poreCoordinates, centroidX, centroidY, axisVectorX, axisVectorY),
                     start = list(centroidX = xyCentroid[1], centroidY = xyCentroid[2],
                                  axisVectorX = axisVector[1], axisVectorY = axisVector[2]),
-                    control = nls.control(minFactor = 1/5000))
+                    control = nls.control(minFactor = 1/15000))
   
   
   nlsCoeff <- coef(centerAxis)
@@ -136,9 +143,9 @@ for(l in numLayer){
   ## store the old coupon coordinates, the "new" rotated coupon coords, and the nls coeff
   ## useful for generating surface plots and histograms for each coupon
   source("newCoupon.R")
-  setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData")
+  setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHyp")
   newCoupon <- newCoupon(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
                          nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
   
-  save(oldCoupon, newCoupon, nlsCoeff, file = paste0(l,"spacingNoLayer.rda"))
+  save(oldCoupon, newCoupon, nlsCoeff, file = paste0(s,"spacingRep",l,".rda"))
 }
