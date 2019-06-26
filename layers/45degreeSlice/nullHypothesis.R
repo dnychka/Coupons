@@ -24,7 +24,7 @@ setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHy
 
 angleSeq <- seq(0, 2*pi, by = pi/20) #test out a sequence of theta
 
-numSims <- 5
+numSims <- 50
 relPeakStrength <- matrix(NA, nrow = length(angleSeq), ncol = numSims)
 relSignals <- NULL
 
@@ -64,6 +64,9 @@ bplot(t(relSignals[-1,]), by = relSignals[1,])
 
 bplot(apply(relSignals[-1,], 2, max), by = relSignals[1,]) #showing its easier to pick up layer spacing in 25 than 10....
 
+bplot(apply(relSignals[-1,], 2, mean), by = relSignals[1,])
+
+saveRDS(relSignals, "relSignals.rda")
 
 
 
