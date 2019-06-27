@@ -25,13 +25,13 @@ setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHy
 angleSeq <- seq(0, 2*pi, by = pi/20) #test out a sequence of theta
 
 numSims <- 50
-relPeakStrength <- matrix(NA, nrow = length(angleSeq), ncol = numSims)
+tempSignals <- matrix(NA, nrow = length(angleSeq), ncol = numSims)
 relSignals <- NULL
 
 
-layerSpace <- c(55,45,35,25,15,5)
+layerSpacing <- c(55,45,35,25,15,5)
 
-for(i in layerSpace){
+for(i in layerSpacing){
 
   for(n in 1:numSims){
     
@@ -47,28 +47,32 @@ for(i in layerSpace){
   
     histSave <- FFrotate(angleSeq, centerCoupon)
   
-    relPeakStrength[,n] <-  makePeriodogram(angleSeq, histSave)
+    tempSignals[,n] <-  makePeriodogram(angleSeq, histSave)
     
   }
   
-  relPeakStrength <- rbind(rep(i, length(numSims)), relPeakStrength) #name the columns for fbplot
+  tempSignals <- rbind(rep(i, length(numSims)), tempSignals) #name the columns for fbplot
   
-  relSignals <- cbind(relSignals, relPeakStrength)
+  relSignals <- cbind(relSignals, tempSignals)
   
-  relPeakStrength <- relPeakStrength[-1,]
+  tempSignals <- tempSignals[-1,]
  
 } 
 
-
-bplot(t(relSignals[-1,]), by = relSignals[1,])
-
-bplot(apply(relSignals[-1,], 2, max), by = relSignals[1,]) #showing its easier to pick up layer spacing in 25 than 10....
-
-bplot(apply(relSignals[-1,], 2, mean), by = relSignals[1,])
-
 saveRDS(relSignals, "relSignals.rda")
 
+## ------------------------------------------
+## examining distribution by pore density grouping
+## ------------------------------------------
 
+bplot((relSignals[-1,]), by = relSignals[1,])
 
+b<-bplot(apply(relSignals[-1,], 2, max), by = relSignals[1,]) 
 
+# some messy t-tests
+t.test(b$stats[,1], b$stats[,2])
+t.test(b$stats[,1], b$stats[,3])
+t.test(b$stats[,1], b$stats[,4])
+t.test(b$stats[,1], b$stats[,5])
+t.test(b$stats[,1], b$stats[,6])
 
