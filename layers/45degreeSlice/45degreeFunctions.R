@@ -36,7 +36,7 @@ for(theta in angleSeq){
   
   RzyCoupon <- RzCoupon %*% Ry
  
-  h<-hist(~RzyCoupon[,3], w=25/10, plot = FALSE)
+  h<-hist(~RzyCoupon[,3], w=5, plot = FALSE)
   
   histSave[[i]] <- rbind(h$counts, h$mids)
   
@@ -79,7 +79,21 @@ makePeriodogram <- function(angleSeq, histSave){
     
     peak <- findFreq(P,lag,threshold,influence)
     
-    relSignal[m] <- sum(P[which(peak$signals==1)])/sum(P)
+    ind <- which(peak$signals==1)
+    
+    Ppeaks <- P[ind]
+    Frpeaks <- Fr[ind]
+    
+    fundFreq <- Frpeaks[which.max(Ppeaks)]
+    findHarmonic <- vector()
+    
+    for(j in 1:5){
+      for(i in 1:length(Fr)){
+        ifelse(all.equal(fundFreq*j, Fr[i], tol = 0.01)==TRUE,  findHarmonic <- c(findHarmonic, P[i]),  NA)
+      }
+    }
+    
+    relSignal[m] <- sum(findHarmonic)/sum(P)
     
   }
   
