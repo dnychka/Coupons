@@ -13,7 +13,7 @@ library(rgl)
 
 # numLayer <- seq(100,5,by=-5)
 
-s <- 5
+s <- 20
 
 numPore <- length(seq(0,4000,by = s))
 
@@ -24,7 +24,6 @@ for(l in 49:50){
   x = runif(dense, 0, 4000)
   y = rep(0, length(x))
   
-  noise <- runif(length(x), 70, 100)
   z = x
 
   
