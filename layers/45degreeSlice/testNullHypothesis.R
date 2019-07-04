@@ -20,7 +20,7 @@ setwd("C:/Users/barna/Documents/Coupons/nlsAxis/datasets")
 load("couponCov.rda")
 
 setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHyp")
-nullSignals <- readRDS("relSignals.rda")
+nullSignals <- readRDS("relSignalsHarmn.rda")
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/couponCaseStudies/caseStudyData/cropped")
 
@@ -31,7 +31,7 @@ fortyFive <- which(couponCov$polarAngle == 45)
 angleSeq <- seq(0, 2*pi, by = pi/20) #test out a sequence of theta
 
 numCoupons <- length(fortyFive)
-relSignals <- matrix(NA, nrow = length(angleSeq), ncol = numCoupons)
+realSignals <- matrix(NA, nrow = length(angleSeq), ncol = numCoupons)
 
 i=1
 for(n in fortyFive){
@@ -48,18 +48,23 @@ for(n in fortyFive){
     
     histSave <- FFrotate(angleSeq, centerCoupon)
     
-    relSignals[,i] <-  makePeriodogram(angleSeq, histSave)
+    realSignals[,i] <-  makePeriodogram(angleSeq, histSave)
     
   i=i+1
 } 
 
 
+
 nullCoupons <- apply(nullSignals[-1,], 2, max)
-realCoupons <- c(apply(tempSignal,2,max), rep(NA, (length(nullCoupons)-length(apply(tempSignal,2,max)))))
+realCoupons <- c(apply(realSignals,2,max), rep(NA, (length(nullCoupons)-length(apply(realSignals,2,max)))))
 
 dat <- cbind(nullCoupons, realCoupons)
 
+dev.off()
 boxplot(dat, main = "relative peak strength, 45 degree coupons",
         pch = 16, boxwex = 0.7)
+
+boxplot(nullCoupons)
+
 
 t.test(nullCoupons, realCoupons)
