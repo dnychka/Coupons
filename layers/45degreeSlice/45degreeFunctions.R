@@ -81,15 +81,36 @@ makePeriodogram <- function(angleSeq, histSave){
     
     ind <- which(peak$signals==1)
     
-    Ppeaks <- P[ind]
-    Frpeaks <- Fr[ind]
-    
-    fundFreq <- Frpeaks[which.max(Ppeaks)]
     findHarmonic <- vector()
     
-    for(j in 1:5){
-      for(i in 1:length(Fr)){
-        ifelse(all.equal(fundFreq*j, Fr[i], tol = 0.01)==TRUE,  findHarmonic <- c(findHarmonic, P[i]),  NA)
+    if(length(ind) != 0){# check to make sure there's actually peaks
+        
+        Ppeaks <- P[ind]
+        Frpeaks <- Fr[ind]
+        
+        origFreq <- Frpeaks[which.max(Ppeaks)]
+        
+        for(j in c(1,1/2,1/3,1/4,1/5)){
+          fundFreq <- origFreq*j
+          if(fundFreq <= .15){break}
+        }
+        
+        ##find the harmonics
+        for(j in 1:5){
+          for(i in 1:length(Fr)){
+            ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+            
+          }
+        }
+ 
+    } else {
+      fundFreq <- Fr[which.max(P[which(Fr<=0.15)])]
+      ##find the harmonics
+      for(j in 1:5){
+        for(i in 1:length(Fr)){
+          ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+          
+        }
       }
     }
     

@@ -21,6 +21,9 @@ load("couponCov.rda")
 
 setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHyp")
 nullSignals <- readRDS("relSignalsHarmn.rda")
+setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData")
+layeredCoupons <- readRDS("synthetic45layers.rds")
+
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/couponCaseStudies/caseStudyData/cropped")
 
@@ -54,9 +57,11 @@ for(n in fortyFive){
 } 
 
 
-
-nullCoupons <- apply(nullSignals[-1,], 2, max)
-realCoupons <- c(apply(realSignals,2,max), rep(NA, (length(nullCoupons)-length(apply(realSignals,2,max)))))
+layeredCoupons <- apply(layeredCoupons,2,max)
+nullCoupons <- c(apply(nullSignals[-1,], 2, max), rep(NA,
+                                                      (length(layeredCoupons)-length(apply(nullSignals[-1,],2,max)))))
+realCoupons <- c(apply(realSignals,2,max), 
+                 rep(NA, (length(nullCoupons)-length(apply(realSignals,2,max)))))
 
 dat <- cbind(nullCoupons, realCoupons)
 
@@ -64,7 +69,11 @@ dev.off()
 boxplot(dat, main = "relative peak strength, 45 degree coupons",
         pch = 16, boxwex = 0.7)
 
-boxplot(nullCoupons)
 
+dat <- cbind(dat, layeredCoupons)
+
+boxplot(dat, main = "relative peak strength, 45 degree coupons",
+        pch = 16, boxwex = 0.7)
 
 t.test(nullCoupons, realCoupons)
+t.test(layeredCoupons, realCoupons)

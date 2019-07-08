@@ -24,12 +24,12 @@ setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHy
 
 angleSeq <- seq(0, 2*pi, by = pi/20) #test out a sequence of theta
 
-numSims <- 50
+numSims <- 10
 tempSignals <- matrix(NA, nrow = length(angleSeq), ncol = numSims)
 relSignals <- NULL
 
 
-layerSpacing <- c(55,45,35,25,15,5)
+layerSpacing <- seq(40,60,by=2.5)
 
 for(i in layerSpacing){
 
@@ -59,7 +59,7 @@ for(i in layerSpacing){
  
 } 
 
-saveRDS(relSignals, "relSignals.rda")
+saveRDS(relSignals, "relSignalsHarmn.rda")
 
 ## ------------------------------------------
 ## examining distribution by pore density grouping

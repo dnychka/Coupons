@@ -11,15 +11,16 @@ setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData/nullHy
 library(conicfit)
 library(rgl)
 
-# numLayer <- seq(100,5,by=-5)
 
-s <- 20
+numLayer <- seq(50,60,by=2.5)
+
+for(s in numLayer){
 
 numPore <- length(seq(0,4000,by = s))
 
 dense <- numPore*25 #find density of pores in layered version of coupon
 
-for(l in 49:50){
+for(l in 1:10){
   # calc points on a 45 degree line
   x = runif(dense, 0, 4000)
   y = rep(0, length(x))
@@ -147,4 +148,5 @@ for(l in 49:50){
                          nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
   
   save(oldCoupon, newCoupon, nlsCoeff, file = paste0(s,"spacingRep",l,".rda"))
+}
 }

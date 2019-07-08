@@ -22,17 +22,18 @@ setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData")
 
 angleSeq <- seq(0, 2*pi, by = pi/20) #test out a sequence of theta
 
-harmonicSignals <- matrix(NA, nrow = length(angleSeq), ncol = length(layerSpacing))
+layerSpacing <- seq(40,60,length.out = 150)
 
-
-layerSpacing <- c(40,45,50,55,60)
+harmonicSignalsF <- matrix(NA, nrow = length(angleSeq), ncol = length(layerSpacing))
 
 i=1
 for(n in layerSpacing){
 
     print(n)
+  
+  #n= 41.20805
     
-    load(paste0(n,"spacingSyn45.rda"))
+    load(paste0(round(n,3),"spacingSyn45.rda"))
     
     # center the coupon
     centerCoupon <- cbind(scale(newCoupon[,1], center = TRUE, scale = FALSE),
@@ -42,10 +43,10 @@ for(n in layerSpacing){
     
     histSave <- FFrotate(angleSeq, centerCoupon)
     
-    harmonicSignals[,i] <-  makePeriodogram(angleSeq, histSave)
+    harmonicSignalsF[,n] <-  makePeriodogram(angleSeq, histSave)
     i=i+1
 }
 
-boxplot(apply(harmonicSignals,2,max), main = "relative peak strength, synthetic layers")
+boxplot(apply(harmonicSignalsF,2,max), main = "relative peak strength, synthetic layers")
 
-
+saveRDS(harmonicSignalsF, "synthetic45Layers.rds")

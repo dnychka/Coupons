@@ -9,7 +9,11 @@
 library(conicfit)
 library(rgl)
 
-numLayer <- seq(100,20,by=-5)
+
+
+numLayer <- seq(40,60,length.out = 150)
+
+which(round(numLayer,3)==50.336)
 
 for(l in numLayer){
 # calc points on a 45 degree line
@@ -42,7 +46,7 @@ aboutY <- function(phi) {matrix( c(cos(phi), 0, sin(phi), 0, 1, 0, -sin(phi), 0,
 
 aboutZ <- function(theta) {matrix( c(cos(theta), sin(theta), 0, -sin(theta), cos(theta), 0, 0, 0, 1), 3, 3 )}
 
-theta <- -41*pi/180 #rotate the coupon so it's almost upright to match the 
+theta <- -runif(1,38,42)*pi/180 #rotate the coupon so it's almost upright to match the 
                     #usual orientation of the actual coupons. Works better with nls too
 
 Ry <- aboutY(theta)
@@ -114,7 +118,8 @@ N <- length(poreCoordinates[,1])
   
   centerAxis <- nls(radiusTarget~radiusAligned(poreCoordinates, centroidX, centroidY, axisVectorX, axisVectorY),
                     start = list(centroidX = xyCentroid[1], centroidY = xyCentroid[2],
-                                 axisVectorX = axisVector[1], axisVectorY = axisVector[2]))
+                                 axisVectorX = axisVector[1], axisVectorY = axisVector[2]),
+                    control = nls.control(minFactor = 1/10000))
   
   
   nlsCoeff <- coef(centerAxis)
@@ -125,9 +130,11 @@ N <- length(poreCoordinates[,1])
 ## store the old coupon coordinates, the "new" rotated coupon coords, and the nls coeff
 ## useful for generating surface plots and histograms for each coupon
 source("newCoupon.R")
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/45degreeSlice/45degreeData")
+setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeData")
 newCoupon <- newCoupon(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
                        nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
 
-save(oldCoupon, newCoupon, nlsCoeff, file = paste0(l,"spacingSyn45.rda"))
+save(oldCoupon, newCoupon, nlsCoeff, file = paste0(round(l,3),"spacingSyn45.rda"))
 }
+  
+
