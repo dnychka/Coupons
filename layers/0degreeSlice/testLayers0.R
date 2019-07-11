@@ -12,35 +12,27 @@ library(rgl)
 library(fields)
 library(FSA)
 
-setwd("C:/Users/barna/Documents/Coupons/layers/45degreeSlice")
-source("threshold.R")
-source("45degreeFunctions.R")
+setwd("C:/Users/barna/Documents/Coupons/layers/0degreeSlice")
+source("findPeaks.R")
 
-setwd("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData")
+setwd("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/spacingLessThan30")
 
 ## ------------------------------------------------------
 
 layerSpacing <- seq(40,60,length.out = 150)
 
-harmonicSignals <- rep(NA, ncol = length(layerSpacing))
+layerSpacingFine <- seq(10,30, length.out=50)
 
-n=59.060402684538
-n=59.8657718
-n=48.32215
-n=51.27517
-n=46.1745
-n=59.329
-n=59.195
-n=43.087
+harmonicSignals <- rep(NA, ncol = length(layerSpacingFine))
+
 
 k=1
-for(n in layerSpacing){
+for(n in layerSpacingFine){
   
   print(round(n,3))
   
   load(paste0(round(n,3),"spacingSyn0.rda"))
-  
-  #load("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/nullHyp/50spacingRep5.rda")
+
   
   # center the coupon
   centerCoupon <- cbind(scale(newCoupon[,1], center = TRUE, scale = FALSE),
@@ -77,64 +69,42 @@ for(n in layerSpacing){
   
   
   
-  Ppeaks <- P[ind]
-  Frpeaks <- Fr[ind]
-  
-  
-   #fundFreq <- Frpeaks[which.max(Ppeaks)]
-  
-   
-   
-   #fundFreq <- Fr[which.max(P[which(Fr<=0.15)])]
-     
+ 
    findHarmonic <- vector()
+   findBand <- vector()
 
+   if(length(ind) != 0){# check to make sure there's actually peaks
 
-   origFreq <- Frpeaks[which.max(Ppeaks)]
-   
-   for(j in c(1,1/2,1/3,1/4,1/5)){
-     fundFreq <- origFreq*j
-     if(fundFreq <= .15){break}
-   }
-   
-   xline(fundFreq*c(1,2,3,4,5), col = "tomato", lty=3)
-   
-  ##check for lowest freq (i.e. fundamental frequency)
-
-  # for(j in c(1/5,1/4,1/3,1/2,2,3,4,5)){
-  #   for(i in 1:length(Frpeaks)){
-  #     ifelse(all.equal(fundFreq*j, Frpeaks[i], tol = 0.05)==TRUE,  fundFreq <- c(fundFreq,Frpeaks[i]),  NA)
-  #   }
-  # }
-
-  # xline(Frpeaks, col="steelblue", lty=3)
-  
- # fundFreq <- min(fundFreq)
-  
- # xline(fundFreq*c(1,2,3,4,5), col = "grey", lty=3)
-  
-  # xline(min(Frpeaks), col = "cornflowerblue", lty=3)
-  # 
-  # fundFreq <- min(fundFreq)
-  # 
-  # xline(fundFreq*c(1,2,3,4), col = "violetred1", lty=3)
-  # 
-  
-  
-  
-
-  ##find the harmonics
-  for(j in 1:5){
-    for(i in 1:length(Fr)){
-      ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
-      
+     Ppeaks <- P[ind]
+     Frpeaks <- Fr[ind]
+     
+     origFreq <- Frpeaks[which.max(Ppeaks)]
+     
+     for(j in c(1,1/2,1/3,1/4,1/5)){
+       fundFreq <- origFreq*j
+       if(fundFreq <= .15){break}
+     }
+    ##find the harmonics
+    for(j in 1:5){
+      for(i in 1:length(Fr)){
+        ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+        ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findBand <- c(findBand, Fr[i]),  NA)
+      }
     }
-  }
+     
+     xline(findBand, col = "violetred1", lty=3)
   
-  #xline(Frpeaks[c(4,5,6,7,9,10,11,12)], col="grey", lty=3)
-  
-  #findHarmonic <- c(findHarmonic, Ppeaks[i])
-  
+   } else {
+     fundFreq <- Fr[which.max(P[which(Fr<=0.15)])]
+     ##find the harmonics
+     for(j in 1:5){
+       for(i in 1:length(Fr)){
+         ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+         ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findBand <- c(findBand, Fr[i]),  NA)
+       }
+     }
+     xline(findBand, col = "violetred1", lty=3)
+   }
   harmonicSignals[k] <- sum(findHarmonic)/sum(P)
 
   k=k+1
@@ -143,6 +113,3 @@ for(n in layerSpacing){
 harmonicSignals
 
 boxplot(harmonicSignals, main = "relative peak strength, synthetic layers")
-
-#saveRDS(harmonicSignals, "synthetic0layers.rds")
-#
