@@ -25,9 +25,9 @@ layerSpacing <- c(40,45,50,55,60)
 
 #layerSpacing <- c(40,50,60)
 numSims <- 10
-harmonicSignalsNull <- vector()
+harmonicSignalsNull <- rep(NA, (length(layerSpacing)*numSims))
 
-
+m=1
 for(k in layerSpacing){
   
   for(n in 1:numSims){
@@ -103,11 +103,11 @@ for(k in layerSpacing){
         }
       }
     }
-    harmonicSignalsNull[k] <- sum(findHarmonic)/sum(P)
+    harmonicSignalsNull[m] <- sum(findHarmonic)/sum(P)
     
-    
+    m=m+1
   }
-  k=k+1
+  
 }
 
 boxplot(harmonicSignalsNull)
