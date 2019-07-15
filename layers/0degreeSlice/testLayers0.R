@@ -15,7 +15,7 @@ library(FSA)
 setwd("C:/Users/barna/Documents/Coupons/layers/0degreeSlice")
 source("findPeaks.R")
 
-setwd("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/spacingLessThan30")
+setwd("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/spacing40to60")
 
 ## ------------------------------------------------------
 
@@ -23,11 +23,13 @@ layerSpacing <- seq(40,60,length.out = 150)
 
 layerSpacingFine <- seq(10,30, length.out=50)
 
-harmonicSignals <- rep(NA, ncol = length(layerSpacingFine))
+layerSpacingNoise <- seq(40,60,length.out=50)
+
+harmonicSignals <- rep(NA, ncol = length(layerSpacing))
 
 
 k=1
-for(n in layerSpacingFine){
+for(n in layerSpacing){
   
   print(round(n,3))
   
@@ -84,13 +86,19 @@ for(n in layerSpacingFine){
        fundFreq <- origFreq*j
        if(fundFreq <= .15){break}
      }
-    ##find the harmonics
-    for(j in 1:5){
-      for(i in 1:length(Fr)){
-        ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
-        ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findBand <- c(findBand, Fr[i]),  NA)
-      }
-    }
+     ##find the harmonics
+     for(j in 1:5){
+       for(i in 1:length(Fr)){
+         
+         if(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05))){
+           if(Fr[i] %in% findBand){
+             NA #don't want to repeat values
+           } else {findHarmonic <- c(findHarmonic, P[i])
+           findBand <- c(findBand, Fr[i])}
+         } else {NA}
+         
+       }
+     }
      
      xline(findBand, col = "violetred1", lty=3)
   
@@ -99,8 +107,14 @@ for(n in layerSpacingFine){
      ##find the harmonics
      for(j in 1:5){
        for(i in 1:length(Fr)){
-         ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
-         ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findBand <- c(findBand, Fr[i]),  NA)
+         
+         if(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05))){
+           if(Fr[i] %in% findBand){
+             NA #don't want to repeat values
+           } else {findHarmonic <- c(findHarmonic, P[i])
+           findBand <- c(findBand, Fr[i])}
+         } else {NA}
+         
        }
      }
      xline(findBand, col = "violetred1", lty=3)
@@ -112,4 +126,7 @@ for(n in layerSpacingFine){
 
 harmonicSignals
 
+
 boxplot(harmonicSignals, main = "relative peak strength, synthetic layers")
+
+#saveRDS(harmonicSignals, "noisy04spacing40to60signals.rds")

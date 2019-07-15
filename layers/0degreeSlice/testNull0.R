@@ -73,6 +73,7 @@ for(k in layerSpacing){
     
     
     findHarmonic <- vector()
+    findBand <- vector()
     
     if(length(ind) != 0){# check to make sure there's actually peaks
       
@@ -88,20 +89,39 @@ for(k in layerSpacing){
       ##find the harmonics
       for(j in 1:5){
         for(i in 1:length(Fr)){
-          ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+          
+          if(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05))){
+            if(Fr[i] %in% findBand){
+              NA #don't want to repeat values
+            } else {findHarmonic <- c(findHarmonic, P[i])
+            findBand <- c(findBand, Fr[i])}
+          } else {NA}
           
         }
       }
+      
+      xline(findBand, col = "violetred1", lty=3)
+      
       
     } else {
       fundFreq <- Fr[which.max(P[which(Fr<=0.15)])]
       ##find the harmonics
       for(j in 1:5){
         for(i in 1:length(Fr)){
-          ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+          
+          if(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05))){
+            if(Fr[i] %in% findBand){
+              NA #don't want to repeat values
+            } else {findHarmonic <- c(findHarmonic, P[i])
+            findBand <- c(findBand, Fr[i])}
+          } else {NA}
           
         }
       }
+      
+      xline(findBand, col = "violetred1", lty=3)
+      
+      
     }
     harmonicSignalsNull[m] <- sum(findHarmonic)/sum(P)
     
