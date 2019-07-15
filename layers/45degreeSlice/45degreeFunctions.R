@@ -98,7 +98,13 @@ makePeriodogram <- function(angleSeq, histSave){
         ##find the harmonics
         for(j in 1:5){
           for(i in 1:length(Fr)){
-            ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+            
+            if(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05))){
+              if(Fr[i] %in% findBand){
+                NA #don't want to repeat values
+              } else {findHarmonic <- c(findHarmonic, P[i])
+              findBand <- c(findBand, Fr[i])}
+            } else {NA}
             
           }
         }
@@ -108,7 +114,13 @@ makePeriodogram <- function(angleSeq, histSave){
       ##find the harmonics
       for(j in 1:5){
         for(i in 1:length(Fr)){
-          ifelse(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05)), findHarmonic <- c(findHarmonic, P[i]),  NA)
+          
+          if(isTRUE(all.equal(fundFreq*j, Fr[i], tol = 0.05))){
+            if(Fr[i] %in% findBand){
+              NA #don't want to repeat values
+            } else {findHarmonic <- c(findHarmonic, P[i])
+            findBand <- c(findBand, Fr[i])}
+          } else {NA}
           
         }
       }
