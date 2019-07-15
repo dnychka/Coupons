@@ -149,7 +149,7 @@ xline(findBand[1], col = "violetred1", lty=3)
 
 
 plot(result$theta[boundBox], newCoupon[,3][boundBox], 
-     col = color.scale(result$r),  pch = 16,
+     col = color.scale(z = result$r[boundBox],zlim= c(min(result$r),max(result$r))),  pch = 16,
      main = paste0(n),
      xlab = "angle (radians)", ylab = "z axis")
 xline(seq(3.7,4,by=0.0625), col = "grey", lty=3)
