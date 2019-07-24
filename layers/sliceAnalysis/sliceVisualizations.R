@@ -23,60 +23,117 @@ plot3d(fEx[,1], fEx[,2], fEx[,3], type = "s", size = 0.45)
 circXY <- calculateCircle(0,
                           0, 1000, steps = 100)
 
-circZ <- seq(2650, 2850, length.out = 200)
+circZ <- seq(1650, 1850, length.out = 200)
 
 xyzcoord <- cbind(rep(circXY[,1], 200), rep(circXY[,2],200), rep(circZ, each = 100))
 
-idealCyl <- cylinder3d(center = xyzcoord, radius = 2, closed = TRUE)
+idealCylz <- cylinder3d(center = xyzcoord, radius = 2, closed = TRUE)
 
 open3d()
 par3d(cex=0.7)
-axes3d(edges="bbox")
-plot3d(zeroEx[,1],
-       zeroEx[,2],
-       zeroEx[,3],
-       type="s", size = 0.45, axes=FALSE,
+#axes3d(edges="bbox")
+points3d(zeroEx[1:750,1],
+       zeroEx[1:750,2],
+       zeroEx[1:750,3],
+        size = 2, axes=FALSE,
        xlab = "", ylab= "", zlab= "")
 lines3d(0,
         0,
-        seq((min(zeroEx[,3])-600), (max(zeroEx[,3])+400), length.out = 300), col = "darkorange",
+        seq((min(zeroEx[,3])-400), (max(zeroEx[,3])+200), length.out = 300), col = "darkorange",
         lwd = 3)
 rgl.material(alpha = 0.1, lit = FALSE)
-shade3d(idealCyl, col = "cornflowerblue")
+shade3d(idealCylz, col = "cornflowerblue")
+rgl.viewpoint(theta=0, phi=90)
 
 
 
 
 
-##forty-five coupon
-circXY <- calculateCircle(0,
-                          0, 814, steps = 100)
+##forty-five coupon (upright)
+phi = 45*pi/180
+a = 1000*sec(phi) #major axis
+b = 1000 #minor axis
 
-circZ <- seq(-2650, -2850, length.out = 200)
 
-xyzcoord <- cbind(rep(circXY[,1], 200), rep(circXY[,2],200), rep(circZ, each = 100))
+ellpXY <- calculateEllipse(0,0,a,b, steps = 25, randomDist = FALSE)
 
-Rxyzcoord <- xyzcoord %*% aboutY(-45)
+ellpZ <- seq(-2807, -3025, length.out = 200)
+
+xyzEllp <- cbind(rep(ellpXY[,1], 200), rep(ellpXY[,2],200), rep(ellpZ, each = 100))
+
+Rxyzcoord <- xyzEllp %*% aboutY(-42*(pi/180))
 
 Rxyzcoord[,1] <- Rxyzcoord[,1] - mean(Rxyzcoord[,1])
 
-idealCyl <- cylinder3d(center = Rxyzcoord, radius = 2, closed = TRUE)
+idealCyle <- cylinder3d(center = Rxyzcoord, radius = 2, closed = TRUE)
 
 open3d()
 par3d(cex=0.7)
-axes3d(edges="bbox")
+#axes3d(edges="bbox")
 points3d(fEx[,1],
        fEx[,2],
        fEx[,3],
-       size = 0.2, axes=FALSE,
+       size = 2, axes=FALSE,
        xlab = "", ylab= "", zlab= "")
 lines3d(0,
         0,
         seq((min(fEx[,3])-600), (max(fEx[,3])+400), length.out = 300), col = "darkorange",
         lwd = 3)
 rgl.material(alpha = 0.1, lit = FALSE)
-shade3d(idealCyl, col = "cornflowerblue")
+shade3d(idealCyle, col = "cornflowerblue")
+rgl.viewpoint(theta=0, phi=90)
 
+
+##forty-five coupon (at a tilt)
+phi = 45*pi/180
+a = 1000*sec(phi) #major axis
+b = 1000 #minor axis
+
+
+theta = 0
+Rz <- aboutZ(theta)
+
+RzCoupon <- fEx %*% Rz
+
+
+phi <- 45*pi/180 #45 degree tilt
+
+Ry <- aboutY(phi)
+
+RzyCoupon <- RzCoupon %*% Ry
+
+axisMat <- cbind(rep(0,length(fEx[,1])), rep(2,length(fEx[,1])), 
+                 seq((min(fEx)-600),(max(fEx[,3])+400), length.out = length(fEx[,1])))
+
+Taxis <- axisMat %*% Rz %*% Ry
+
+ellpXY <- calculateEllipse(Taxis[350,1],Taxis[350,2],a,b, steps = 25, randomDist = FALSE)
+
+ellpZ <- seq(Taxis[328,3], Taxis[360,3], length.out = 200)
+
+xyzEllp <- cbind(rep(ellpXY[,1], 200), rep(ellpXY[,2],200), rep(ellpZ, each = 100))
+
+
+idealCyle <- cylinder3d(center = xyzEllp, radius = 2, closed = TRUE)
+
+
+plot3d(RzyCoupon[,1], RzyCoupon[,2], RzyCoupon[,3], type = "s", size = 0.45)
+
+open3d()
+par3d(cex=0.7)
+#axes3d(edges="bbox")
+points3d(RzyCoupon[,1],
+         RzyCoupon[,2],
+         RzyCoupon[,3],
+         size = 2, axes=FALSE,
+         xlab = "", ylab= "", zlab= "")
+points3d(Taxis[,1],
+         Taxis[,2],
+         Taxis[,3], col = "darkorange",
+         size = 2)
+rgl.material(alpha = 0.1, lit = FALSE)
+shade3d(idealCyle, col = "cornflowerblue")
+rgl.viewpoint(theta=0, phi=90)
 
 
 
