@@ -10,12 +10,12 @@
 ##
 ## ---------------------------------------------------------------------------
 
-cropCoupon <- function(n, poreData){
-  ordered <- order(poreData[[n]]$comZ)
+cropCoupon <- function(couponCoords){
+  ordered <- order(couponCoords[,3])
   
-  comX <- poreData[[n]]$comX[ordered]
-  comY <- poreData[[n]]$comY[ordered]
-  comZ <- poreData[[n]]$comZ[ordered]
+  comX <- couponCoords[,1][ordered]
+  comY <- couponCoords[,2][ordered]
+  comZ <- couponCoords[,3][ordered]
   
   oldCoupon <- cbind( comX,
                       comY,
