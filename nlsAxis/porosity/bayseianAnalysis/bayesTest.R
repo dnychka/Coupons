@@ -25,74 +25,120 @@ source("newCoupon.R")
 source("cropCoupon.R")
 source("nlsAxisFit.R")
 
-layerSpacing <- seq(40,60,length.out = 150)
-
 
 ##--------------------------------------------------------------------
-## get idea of RSE for synthetic coupons (optimizing to actual radius)
+## look at RSE for the real coupons. Effect of interior crop on RSE
 ##--------------------------------------------------------------------
-rse <- vector()
-j=1
-
-files <- list.files("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/test")
-
-for(i in files){
-load(paste0("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/test/",
-            i))
-  
-  #load("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/test/40spacingSyn0.rda")
-  
-  rse[j] <- summary(centerAxis)$sigma
-  j=j+1
-}
-
-plot(rse)
-
-load("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/spacing40to60/testCenter.rda")
-summary(centerAxis)$sigma
 
 rseReal <- vector()
+rseOuter <- vector()
 niceCoupon <- c(which(couponCov$polarAngle==0), which(couponCov$polarAngle==45))
+
+realCouponNlsObj <- list()
+numPores <- vector()
+
+firstFitNlsObj <- list()
+
 for(n in niceCoupon){
-  poreCoordinates <- cropCoupon(n, poreData)
-  nlsObj <- nlsAxisFit(poreCoordinates)
   
-  rseReal[n] <- summary(nlsObj)$sigma
+  ## fit the cylinder by LS and return a nls object
+  ##------------------------------------------------
+  poreCoordinates <- cropCoupon(n, poreData)
+  firstFit <- nlsAxisFit(poreCoordinates)
+  
+  rseReal[n] <- summary(firstFit[[1]])$sigma
+  
+  firstFitNlsObj[[n]] <- firstFit[[1]]
+  
+  ## fit again by nls once interior pores are removed
+  ##------------------------------------------------
+  interior <- median(firstFit[[2]])-sd(firstFit[[2]])
+  discard <- which(firstFit[[2]] < interior)
+  
+  outerPores <- poreCoordinates[-discard,]
+  nlsObj <- nlsAxisFit(outerPores)
+  numPores[n] <- length(outerPores[,1])
+  
+  rseOuter[n] <- summary(nlsObj[[1]])$sigma
+  
+  ## save the no-interior-pores nls object
+  ##------------------------------------------------
+  realCouponNlsObj[[n]] <- nlsObj[[1]] 
+
 }
 
-plot(rseReal)
+##--------------------------------------------------------------------
+## a few quick histograms to show no interior pores
+##--------------------------------------------------------------------
+
+hist(~firstFit[[2]], w=10, col = "grey30",
+     freq = FALSE, xlab = "radius (microns)",
+     main = "pore radii distribution with interior pores",
+     xlim = c(100,900))
+
+hist(~nlsObj[[2]], w = 10, col = "grey30",
+     freq = FALSE, xlab = "radius (microns)",
+     main = "pore radii distribution without interior pores",
+     xlim = c(100,900))
+
+##--------------------------------------------------------------------
+## check to make sure interior pores aren't influencing coeff fit
+##--------------------------------------------------------------------
+
+recordTTest <- matrix(nrow=4,ncol=length(niceCoupon))
+firstTemp <- matrix(NA,4,4)
+realTemp <- matrix(NA,4,4)
+
+k=1
+
+for(i in niceCoupon){
+
+  firstTemp <-  summary(firstFitNlsObj[[i]])$coefficient
+  
+  realTemp <- summary(realCouponNlsObj[[i]])[[10]]
+  
+  for(j in 1:4){
+    tObj <- t.test(firstTemp[j,], realTemp[j,])
+    
+    recordTTest[j,k] <- tObj[[3]] 
+  }
+  
+  k=k+1
+}
+
+
+##--------------------------------------------------------------------
+## RSE plots
+##--------------------------------------------------------------------
+# with color for polar angle
+plot(rseReal, ylim = c(0,150),
+     main = "RSE for nls fit, with and without interior pores",
+     ylab = "RSE", xlab = "coupon number",
+     col = ifelse(couponCov$polarAngle == 0, "cornflowerblue", "violetred1"))
+points(rseOuter, 
+       col = ifelse(couponCov$polarAngle == 0, "cornflowerblue", "violetred1"), pch = 16)
+legend("topright", c("0 degree", "45 degree"), col = c("cornflowerblue", "violetred1"), pch = c(16,16))
+
+# without color for polar angles
+plot(rseReal, ylim = c(0,150),
+     main = "RSE for nls fit, with and without interior pores",
+     ylab = "RSE", xlab = "coupon number")
+points(rseOuter, 
+        pch = 16)
+legend("topright", c("interior pores", "no interior pores"),  pch = c(1,16))
+
+
 
 ##--------------------------------------------------------------------
 
-bxplots <- list()
-w = 1
+uncertaintyInSignals <- matrix(nrow = length(niceCoupon), ncol = 100)
+zeros <- which(couponCov$polarAngle==0)
+fortyFives <- which(couponCov$polarAngle==45)
+w=1
+
 for (n in niceCoupon){
 
-##--------------------------------------------------------------------
-## fit the cylinder by LS and return a nls object
-##--------------------------------------------------------------------
-
-poreCoordinates <- cropCoupon(n, poreData)
-firstFit <- nlsAxisFit(poreCoordinates)
-
-## fit again by nls once interior pores are removed
-interior <- median(firstFit[[2]])-sd(firstFit[[2]])
-discard <- which(firstFit[[2]] < interior)
-
-outerPores <- poreCoordinates[-discard,]
-nlsObj <- nlsAxisFit(outerPores)
-
-nlsObj <- nlsObj[[1]]
-
-##--------------------------------------------------------------------
-
-##--------------------------------------------------------------------
-## OR pull the nls object from synthetic coupon
-##--------------------------------------------------------------------
-# nlsObj <- centerAxis
-# poreCoordinates <- nlsCoupon
-##--------------------------------------------------------------------
-
+nlsObj <- realCouponNlsObj[[n]]
 
 
 ##--------------------------------------------------------------------
@@ -104,7 +150,7 @@ betaHat <- coef(nlsObj)
 Vbeta <- vcov(nlsObj)
 sigmaHat <- nlsSum$sigma
 
-n <- length(outerPores[,1]) # number of data points
+m <- numPores[n] # number of data points
 k <- 4 # number of parameters
 
 nSims <- 100 # number of simulations
@@ -116,15 +162,15 @@ beta <- matrix(NA, nrow = nSims, ncol = k)
 ## create nSims number of random simulations of beta and sigma
 ##
 
+bayesCoupon <- list()
+
 for (s in 1:nSims){
-  sigma[s] <- sigmaHat*sqrt((n-k)/rchisq(1,n-k))
+  sigma[s] <- sigmaHat*sqrt((m-k)/rchisq(1,m-k))
   beta[s,] <- mvrnorm (1, betaHat, Vbeta*sigma[s]^2)
   
-  nlsCoupon <- newCoupon(poreCoordinates, beta[s,1], beta[s,2], 
+  bayesCoupon[[s]] <- newCoupon(poreCoordinates, beta[s,1], beta[s,2], 
                         beta[s,3], beta[s,4])
-  
-  saveRDS(nlsCoupon, 
-          paste0("C:/Users/barna/Documents/Coupons/nlsAxis/porosity/nlsPorosityData/bayes/bayesCoupon",s,".rds"))
+
 }
 ##--------------------------------------------------------------------
 
@@ -133,25 +179,30 @@ for (s in 1:nSims){
 ##--------------------------------------------------------------------
 ## compute signal strength for each orientation 
 ##--------------------------------------------------------------------
-setwd("C:/Users/barna/Documents/Coupons/layers/0degreeSlice")
-source("findPeaks.R")
-source("0degreeFunctions.R")
+source("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/findPeaks.R")
+source("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeFunctions.R")
+source("C:/Users/barna/Documents/Coupons/layers/45degreeSlice/45degreeFunctions.R")
 
 sampledSignals <- vector()
+angleSeq <- seq(0, 2*pi, length.out = 30)
 
-for(i in 1:nSims){
-  coupon <- readRDS(paste0("C:/Users/barna/Documents/Coupons/nlsAxis/porosity/nlsPorosityData/bayes/bayesCoupon",i,".rds"))
+for(s in 1:nSims){
+  coupon <- bayesCoupon[[s]]
   
+  if(n %in% zeros){
   histSeries <- getHistogram(coupon)
-  sampledSignals[i] <- getSignal(histSeries)
+  sampledSignals[s] <- getSignal(histSeries)
+  }
+  else {
+    histSeries <- FFrotate(angleSeq, coupon)
+    sampledSignals[s] <- max(makePeriodogram(angleSeq, histSeries))
+  }
 }
 
 
-bxplots[[w]] <- sampledSignals
-w=w+1
-#boxplot(sampledSignals, ylim = c(0,1))
-#pointEst <- readRDS("C:/Users/barna/Documents/Coupons/layers/0degreeSlice/0degreeData/zerosLayeredSignals.rds")
-#yline(harmonicSignals[2], col = "tomato", lty=3, lwd=2)
+uncertaintyInSignals[w,] <- sampledSignals
+w = w+1
+
 ##--------------------------------------------------------------------
 }
 
