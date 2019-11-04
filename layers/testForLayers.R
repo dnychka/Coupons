@@ -3,7 +3,7 @@
 ##
 ## 
 ## Calculate test statistic for each population of 
-## 0 degree coupons
+##  coupons
 ##
 ## Uses chi-squared distribution and mvspec function
 ## to generate confidence intervals for each periodogram
@@ -16,7 +16,7 @@ library(fields)
 library(FSA)
 
 # load required function files
-setwd("C:/Users/barna/Documents/Coupons/layers")
+setwd("C:/Users/barna/Documents/Coupons/layers/layerFunctions")
 load("couponCov.rda")
 source("calculateTestStatistic.R")
 source("rotations.R")

@@ -11,19 +11,19 @@ library(rgl)
 
 # numLayer <- seq(10,30,length.out = 50)
 # 
-# noiseAmt <- seq(0.1,0.5,length.out=5)
+noiseAmt <- seq(0.1,1, by=0.1)
 
 numLayer <- seq(40,60,length.out=100)
 
-which(round(numLayer,3)==54.545)
+which(round(numLayer,3)==57.576)
 
-for(l in numLayer[73:100]){
+for(l in numLayer[1:100]){
   
   z = seq(0,4000,by = l)
   
-# noise <- runif(length(z),-l*noiseAmt[4],l*noiseAmt[4])
-# 
-#   z = z+noise
+noise <- runif(length(z),-l*noiseAmt[10],l*noiseAmt[10])
+
+  z = z+noise
 
 y = rep(0, length(z))
 x = y
@@ -155,11 +155,11 @@ nlsCoeff <- coef(centerAxis)
 ## store the old coupon coordinates, the "new" rotated coupon coords, and the nls coeff
 ## useful for generating surface plots and histograms for each coupon
 source("newCoupon.R")
-setwd("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/spacing40to60")
+setwd("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/noisySpacing40to60/noise0.10")
 nlsCoupon <- newCoupon(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
                        nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
 
-save(oldCoupon, nlsCoupon, nlsCoeff, centerAxis, file = paste0(round(l,3), "spacingSyn0.rda"))
+save(oldCoupon, nlsCoupon, nlsCoeff, centerAxis, file = paste0(round(l,3), "spacingNoise1.rda"))
 
 }
 
