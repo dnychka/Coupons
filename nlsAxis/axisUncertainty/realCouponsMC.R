@@ -13,7 +13,9 @@ load("couponCov.rda")
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty")
 source("getKDEfunction.R")
 source("getAccelerationFunction.R")
-source("nlsFunctionsForSimulation.R") #lolol don't set wd in functions
+
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis")
+source("nlsFunctions.R") #lolol don't set wd in functions
 
 
 ##
@@ -101,7 +103,7 @@ for(n in 4){ # begin the coupon for loop
       
       
       if(class(nlsObj) != "try-error"){
-        j <- j + 1
+        
         bootNlsCoef[i,] <- coef(nlsObj)
         
         tempNlsCoeff <- coef(nlsObj)
@@ -112,10 +114,11 @@ for(n in 4){ # begin the coupon for loop
         
         bootRadius[i,] <- tempRadius
         
+        break
         
       }
       
-      
+      j <- j+1
       
     } #end of while loop
     
