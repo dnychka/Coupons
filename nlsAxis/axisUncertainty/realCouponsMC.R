@@ -12,6 +12,7 @@ load("couponCov.rda")
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty")
 source("getKDEfunction.R")
+source("getAccelerationFunction.R")
 source("nlsFunctionsForSimulation.R") #lolol don't set wd in functions
 
 
@@ -26,15 +27,6 @@ couponList <- list.files(full.names = TRUE)
 niceCoupon <- c(which(couponCov$polarAngle==0), which(couponCov$polarAngle==45))
 
 couponList <- couponList[niceCoupon]
-
-##
-## calculate bias-correction and acceleration
-## (at the top bc will eventually merge it in to the giant for loop)
-## ---------------------------------------------------------------------
-setwd("C:/Users/barna/Documents/Coupons/datasets")
-poreData <- readRDS("porosityData.rds")
-
-
 
 
 for(n in 4){ # begin the coupon for loop
@@ -128,73 +120,53 @@ for(n in 4){ # begin the coupon for loop
     } #end of while loop
     
   } #end of bootstrap for loop
+
+
+
+
+
+  ## ---------------------------------------------------------------------
+  ## compute bias-corrected and accelerated CI
+  ## ---------------------------------------------------------------------
+  setwd("C:/Users/barna/Documents/Coupons/datasets")
+  poreData <- readRDS("porosityData.rds")
   
+  poreCoordinates <- cropCoupon(n, poreData)
+  
+  aHat <- getAcceleration(poreCoordinates)
+  zHat <- vector()
+  for(i in 1:5){
+    zHat[i] <- qnorm(sum(ifelse(bootNlsCoef[,i] < nlsCoeff[i], 1, 0))/length(nsamples))
+  }
+
+  
+  
+  paramCI <- matrix(nrow = 2, ncol = length(nlsCoeff), NA)
+  
+  alpha = 0.025 #significance level
+  
+  lo <- vector(); high <- vector()
+  for(i in 1:length(nlsCoeff)){
+    lo <- pnorm(zHat[i] + (zHat[i] + qnorm(alpha)) / (1 - aHat[i] * (zHat[i] + qnorm(alpha)) ))
+    high <- pnorm(zHat[i] + (zHat[i] + qnorm(1-alpha)) / (1 - aHat[i] * (zHat[i] + qnorm(1-alpha)) ))
+    
+    paramCI[,i] <- quantile(bootNlsCoef[,i], c(lo, high))
+  }
+  
+ 
+
 } #end of coupon reading-in for loop
 
 
 
 
-## create pivot for pore radii confidence intervals
-pivMatrix <- matrix(ncol = ncol(bootRadius), nrow = length(nsamples), NA)
-
-bootRadiusCI <- matrix(nrow = 2, ncol = ncol(bootRadius), NA)
-
-for (i in 1:ncol(bootRadius)){
-  
-  pivMatrix[,i] <- (bootRadius[,i]-nlsR[i]) / sd(bootRadius[,i])
- 
-  bootRadiusCI[,i] <- mean(bootRadius[,i]) - sd(bootRadius[,i])*quantile(pivMatrix[,i],c(.025,.975))
-  
-}
+par(mfrow = c(2,2))
+for(i in 1:4){ hist(bootNlsCoef[,i]); xline(paramCI[,i], col = "violetred1", lwd=2) }
 
 
-load("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty/uncertaintyData/coupon4poreCI.rda")
 
 
-## create pivot for nls coeff confidence intervals
-
-pivMatrixCoef <- matrix(ncol = length(nlsCoeff), nrow = length(1:nsamples), NA)
-
-bootCoefCI <- matrix(nrow = 2, ncol = length(nlsCoeff), NA)
-
-bootCoefPerc <- matrix(nrow = 2, ncol = length(nlsCoeff), NA)
-
-for (i in 1:length(nlsCoeff)){
-  
-  pivMatrixCoef[,i] <- (bootNlsCoef[,i]-nlsCoeff[i]) / sd(bootNlsCoef[,i])
-  
-  bootCoefCI[,i] <- mean(bootNlsCoef[,i]) - sd(bootNlsCoef[,i])*quantile(pivMatrixCoef[,i],c(.025,.975))
-  
-  bootCoefPerc[,i] <- quantile(bootNlsCoef[,i], c(.025,.975))
-  
-}
-
-bootCoefCI
-bootCoefPerc
-
-hist(bootNlsCoef[,1])
-xline(bootCoefPerc[,1])
-xline(bootCoefCI[,1], col="tomato")
 
 
-zO <- vector()
-for(i in 1:5){
-  zO[i] <- qnorm(sum(ifelse(bootNlsCoef[,i] < nlsCoeff[i], 1, 0))/nsamples)
-}
 
-alpha = 0.025
 
-i=1
-
-lo <- pnorm(zO[i] + (zO[i] + qnorm(alpha)) / (1 - a[i] * (zO[i] + qnorm(alpha)) ))
-high <- pnorm(zO[i] + (zO[i] + qnorm(1-alpha)) / (1 - a[i] * (zO[i] + qnorm(1-alpha)) ))
-
-boundaries <- quantile(bootNlsCoef[,1], c(lo, high))
-
-xline(boundaries, col = "violetred1", lwd=2)
-
-## -------------------------------
-
-save(bootRadius, bootRadiusCI, bootNlsCoef, bootCoefCI, nlsCoeff, nlsCoupon, file="coupon4biKDE.rda")
-
-bootCoefCI
