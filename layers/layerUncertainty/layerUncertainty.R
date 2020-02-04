@@ -20,7 +20,10 @@ source("rotations.R")
 
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty")
-source("functionsForBootstrapping.R")
+source("getKDEfunction.R")
+
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis")
+source("nlsFunctions.R")
 
 
 
@@ -56,9 +59,10 @@ for(coupon in inputFiles[zeros]){
   
   ## begin the bootstrap for loop ------------
   
+  nsamples = 100
   
-  bootNlsCoef <- matrix(ncol = 5, nrow = length(nsamples), NA)
-  bootRadius <- matrix(ncol = length(nlsCoupon[,1]), nrow = length(nsamples), NA)
+  simNlsCoef <- matrix(ncol = 5, nrow = nsamples, NA)
+  simRadius <- matrix(ncol = length(nlsCoupon[,1]), nrow = nsamples, NA)
   
   
   for(i in 1:nsamples){
@@ -68,17 +72,21 @@ for(coupon in inputFiles[zeros]){
     while(j < 10){ #try nls up to 10 times
       
       # generate stochastic data set by sampling possible
-      # thetas from uniform(0, 2pi)
-      bootTheta <- runif( length(nlsCoupon[,1]),0,2*pi)
+      # thetas and z values from the bivariate KDE of (z, theta)
+      #bootTheta <- runif( length(nlsCoupon[,1]),0,2*pi)
+      
+      kdeSample <- getKDEzt(nlsCoupon, 0.07, 900, 300, length(nlsZ))
+      
+      bootTheta <- kdeSample[[1]]
+      bootZ <- kdeSample[[2]]
       
       
-      
-      # fabricate new data by adding the sampled errors to the 
-      # model output
+      # convert new dataset to cylindrical coordinates
       bootX <- nlsR*cos(bootTheta)
       bootY <- nlsR*sin(bootTheta)
       
-      bootCoupon <- cbind(bootX, bootY, nlsZ)    
+      bootCoupon <- cbind(bootX, bootY, bootZ)  
+      
       
       # orient the bootCoupon so it matches the tilt in the 
       # original data; that way, nlsCoeff will match taking 
@@ -88,12 +96,12 @@ for(coupon in inputFiles[zeros]){
       
       
       # estimate the parameter values for each new fabricated data set
-      M <- length(bootCoupon[,1])
+      N <- length(bootCoupon[,1])
       
       startValues <- getInitialParameters(bootCoupon)
       
       
-      distTarget <- rep(0,M)
+      distTarget <- rep(0,N)
       
       nlsObj <- try(nls(distTarget~getDistance(bootCoupon, 
                                                centroidX, centroidY, 
@@ -108,35 +116,32 @@ for(coupon in inputFiles[zeros]){
       
       
       
-      if(class(nlsObj) != "try-error"){ # since nls needs babysitting
+      if(class(nlsObj) != "try-error"){
         
+        tempNlsCoeff <- coef(nlsObj)
         
-        if(j == 1){
-          
-          tempNlsCoeff <- coef(nlsObj)
-          
-          tempCoupon <- newCoupon(bootCoupon, tempNlsCoeff["centroidX"], tempNlsCoeff["centroidY"], 
-                                  tempNlsCoeff["axisVectorX"], tempNlsCoeff["axisVectorY"])
-          
-          TSZreal[k,l] <- getTestStatistic(tempCoupon)
-          k = k + 1
-        }
+        tempCoupon <- newCoupon(bootCoupon, tempNlsCoeff["centroidX"], tempNlsCoeff["centroidY"], 
+                                tempNlsCoeff["axisVectorX"], tempNlsCoeff["axisVectorY"])
         
-        j <- j + 1
+        TSZreal[k,l] <- getTestStatistic(tempCoupon)
+        k = k + 1
+        
+        break
+        
       }
       
-      
+      j <- j+1
       
     } #end of while loop
     
   } #end of bootstrap for loop
   
-  # calculate the test statistic
+  
   l = l + 1
   
 }
 
-
+saveRDS(TSZreal, "TSZrealUncertainty.rds")
 
 ## ------------------------------
 ## 0 degree coupons, layered
@@ -258,47 +263,39 @@ hist(TSZlayers)
 
 
 
+## -----------------------------
+## GRAPHICS
+## ------------------------------
 
 
 TSZrealPtEst <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/TSZreal.rds")
-#TSZnoLayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/TSZnolayers.rds")
+
+TSZreal <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/TSZrealUncertainty.rds")
 
 TSZlayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSZlayersUncertainty.rds")
 TSZnolayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSZnolayersUncertainty.rds")
 TSZnolayersTwo <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSZnolayersUncertainty2.rds")
 
-# points(TSZrealPtEst, col = "violetred1", pch=20)
-# 
-# boxplot(as.vector(TSZreal))
-# boxplot(TSZrealPtEst, add=TRUE, col = alpha("grey20", 0.3))
-# 
-# rhist<- hist(as.vector(TSZnoLayers), freq=F, xlim = c(0,0.8))
-# lhist <- hist(TSZlayers, freq=F, add=T)
-# xline(TSZrealPtEst, col = "mediumturquoise", lty=1, lwd=2)
-# 
-# plot(density(as.vector(TSZreal)), xlim = c(0,0.8))
-# lines(density(TSZlayers))
-
-length(as.vector(TSZreal))
+TSZnoLayers <- cbind(TSZnolayers, TSZnolayersTwo)
 
 
-TSZnoLayerDat <- cbind(c(as.vector(TSZnolayers), as.vector(TSZnolayersTwo)), rep(2, 4000))
+dat <- rbind( cbind(as.vector(TSZlayers), rep(1,length(as.vector(TSZlayers)))),
+              cbind(as.vector(TSZreal), rep(2,length(as.vector(TSZreal)))),
+              cbind(as.vector(TSZnoLayers), rep(3, length(TSZnoLayers))) )
 
-TSZlayerDat <- cbind(as.vector(TSZlayers), rep(1,2950))
-
-dat <- rbind(TSZlayerDat, TSZnoLayerDat)
 
 dat <- data.frame(dat)
 names(dat) <- c("signal", "population")
 
-dat$type <- as.factor(dat$type)
+dat$population <- as.factor(dat$population)
 
 library(ggplot2)
-
-
+library(extrafont)
+font_import()
+loadfonts(device = "win")
 
 p <- ggplot(dat, aes(signal, fill=  population, col = population)) +
-  ggtitle(label = "Distribution of Signal Strength Test Statistic, 0 degreee Coupons") +
+  ggtitle(label = "Distribution of Signal Strength Test Statistic, 45 degreee Coupons") +
   labs(x = "signal strength", y = "density") +
   geom_density(alpha=0.2, kernel="gaussian", adjust=1.5) +
   theme_bw()+ theme(legend.justification = c(1,1), 
@@ -310,20 +307,248 @@ p <- ggplot(dat, aes(signal, fill=  population, col = population)) +
                     axis.title.x = element_text(size=12),
                     axis.title.y = element_text(size=12),
                     legend.text=element_text(size=12),
-                    legend.title = element_text(size=12)) +
-  scale_color_manual(labels = c("layered", "not layered"), 
-                     values = c("darkorange", 'cornflowerblue'), 
+                    legend.title = element_text(size=12),
+                    text=element_text(size=16,  family="Palatino Linotype")) +
+  scale_color_manual(labels = c("layered", "measured", "not layered"), 
+                     values = c("darkorange", "violetred1", 'cornflowerblue'), 
                      aesthetics = c("colour", "fill"),
-                     name = "simulated populations") +
-  geom_vline(data = data.frame(TSZrealPtEst),  aes(xintercept = TSZrealPtEst),
-             linetype="dotted", color = "maroon3", alpha = 0.7, lwd=1) 
+                     name = "coupon populations")  +
+  annotate("point", x = TSZrealPtEst, y = rep(-.17, 16), pch = "|", col = "maroon3", cex = 2.2)
 p
 
+ggsave("font_ggplot.pdf", plot=p,  width=4, height=4)
+## ------------------------------
+## 45 degree coupons, real data
+## ------------------------------
 
-hist(TSZlayers, freq=F)
-hist(TSZnoLayers, freq=F, add=F, breaks=30)
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis/porosity/nlsPorosityData/cropped")
 
-dat2 <- data.frame(TSZnoLayerDat)
+inputFiles <- list.files(full.names = TRUE)
 
-p2 <- ggplot(dat2, aes(dat2$TSZnoLayers)) + stat_density()
-p2
+ff <- which(couponCov$polarAngle == 45)
+
+N <- length(inputFiles[ff]) #number of coupons in the sample size
+
+nsamples = 100
+
+angleSeq <- seq(0, 2*pi, length.out = 100) #increment by which we change rotation
+
+tempTS <- rep(NA, 100) #store TS for each rotation
+
+TSFreal <- matrix(nrow = nsamples, ncol = N, NA) #test statistic (TS), zero degree, not layered
+
+l = 1 #dummy index to increment coupon number
+
+for(coupon in inputFiles[ff]){
+  
+  load(coupon)
+  
+  k = 1 #dummy index to increment TS
+  
+  ## model output from first round of nls
+  nlsTheta <- atan2(nlsCoupon[,2], nlsCoupon[,1])
+  nlsZ <- nlsCoupon[,3]
+  nlsR <- sqrt(nlsCoupon[,1]^2+nlsCoupon[,2]^2)
+  
+  
+  ## begin the bootstrap for loop ------------
+  
+  
+  bootNlsCoef <- matrix(ncol = 5, nrow = length(nsamples), NA)
+  bootRadius <- matrix(ncol = length(nlsCoupon[,1]), nrow = length(nsamples), NA)
+  
+  
+  for(i in 1:nsamples){
+    print(i)
+    
+    j = 1
+    while(j < 10){ #try nls up to 10 times
+      
+      kdeSample <- getKDEzt(nlsCoupon, 0.07, 900, 300, length(nlsZ))
+      
+      bootTheta <- kdeSample[[1]]
+      bootZ <- kdeSample[[2]]
+      
+      
+      # fabricate new data by adding the sampled errors to the 
+      # model output
+      bootX <- nlsR*cos(bootTheta)
+      bootY <- nlsR*sin(bootTheta)
+      
+      bootCoupon <- cbind(bootX, bootY, nlsZ)    
+      
+      # orient the bootCoupon so it matches the tilt in the 
+      # original data; that way, nlsCoeff will match taking 
+      # coupons from this original tilt -> alignment
+      bootCoupon <- getOldCoupon(bootCoupon, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
+                                 nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])   
+      
+      
+      # estimate the parameter values for each new fabricated data set
+      M <- length(bootCoupon[,1])
+      
+      startValues <- getInitialParameters(bootCoupon)
+      
+      
+      distTarget <- rep(0,M)
+      
+      nlsObj <- try(nls(distTarget~getDistance(bootCoupon, 
+                                               centroidX, centroidY, 
+                                               axisVectorX, axisVectorY, r),
+                        start = list(centroidX = startValues[4], 
+                                     centroidY = startValues[5],
+                                     axisVectorX = startValues[1], 
+                                     axisVectorY = startValues[2],
+                                     r = startValues[7]),
+                        control =  nls.control(minFactor = 1/10000000000)))
+      
+      
+      
+      
+      if(class(nlsObj) != "try-error"){ # since nls needs babysitting
+        
+        
+        if(j == 1){
+          
+          tempNlsCoeff <- coef(nlsObj)
+          
+          tempCoupon <- newCoupon(bootCoupon, tempNlsCoeff["centroidX"], tempNlsCoeff["centroidY"], 
+                                  tempNlsCoeff["axisVectorX"], tempNlsCoeff["axisVectorY"])
+          
+          ## where we put the angle rotations
+        
+          m = 1
+          for(w in angleSeq){
+            
+            rotatedCoupon <- rotateFortyFive(w, tempCoupon) #center and rotate the coupon
+            
+            tempTS[m] <- getTestStatistic(rotatedCoupon) #calc TS for rotated coupon
+            
+            m=m+1
+          }
+          
+          TSFreal[k,l] <- max(tempTS)
+          
+      
+          k = k + 1
+        }
+        
+        j <- j + 1
+      }
+      
+      
+      
+    } #end of while loop
+    
+  } #end of bootstrap for loop
+  
+  # calculate the test statistic
+  l = l + 1
+  
+}
+
+saveRDS(TSFreal, "TSFreal.rds")
+
+## 
+
+
+## ------------------------------
+## 45 degree coupons, LAYERED
+## ------------------------------
+
+setwd("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/spacing40to60")
+
+inputFiles <- list.files(full.names = TRUE)
+
+N <- length(inputFiles) #number of coupons in the sample size
+
+nsamples = 10
+
+angleSeq <- seq(0, 2*pi, length.out = 100) #increment by which we change rotation
+
+tempTS <- rep(NA, 100) #store TS for each rotation
+
+TSFlayers <- matrix(nrow = nsamples, ncol = N, NA) #test statistic (TS), zero degree, not layered
+
+
+i = 1 #dummy index to increment TS
+
+for(coupon in inputFiles){
+  
+  load(coupon)
+  
+  print(i)
+  
+  m = 1
+  for(w in angleSeq){
+    
+    rotatedCoupon <- rotateFortyFive(w, nlsCoupon) #center and rotate the coupon
+    
+    tempTS[m] <- getTestStatistic(rotatedCoupon) #calc TS for rotated coupon
+    
+    m=m+1
+  }
+  
+  TSFlayers[i] <- max(tempTS)
+  i = i + 1
+}
+
+saveRDS(TSFlayers, "TSFlayers.rds")
+
+## 
+
+
+
+## -----------------------------
+## GRAPHICS 45 degree
+## -----------------------------
+
+TSFrealPtEst <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/TSFreal.rds")
+TSFreal <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSFreal.rds")
+
+TSFlayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/TSFlayers.rds")
+TSFlayers <- TSFlayers[ , colSums(is.na(TSFlayers)) == 0]
+
+TSFnoLayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/TSFnoLayers.rds")
+
+
+
+dat <- rbind( cbind(as.vector(TSFlayers), rep(1,length(as.vector(TSFlayers)))),
+              cbind(as.vector(TSFreal), rep(2,length(as.vector(TSFreal)))),
+              cbind(as.vector(TSFnoLayers), rep(3, length(TSFnoLayers))) )
+            
+
+dat <- data.frame(dat)
+names(dat) <- c("signal", "population")
+
+dat$population <- as.factor(dat$population)
+
+library(ggplot2)
+library(extrafont)
+font_import()
+loadfonts(device = "win")
+
+p <- ggplot(dat, aes(signal, fill=  population, col = population)) +
+  ggtitle(label = "Distribution of Signal Strength Test Statistic, 45 degreee Coupons") +
+  labs(x = "signal strength", y = "density") +
+  geom_density(alpha=0.2, kernel="gaussian", adjust=1.5) +
+  theme_bw()+ theme(legend.justification = c(1,1), 
+                    legend.position = c(.95, .95), 
+                    legend.background = element_blank(),
+                    legend.box.background = element_rect(colour = "black"),
+                    plot.title = element_text(size = 15),
+                    axis.text=element_text(size=12),
+                    axis.title.x = element_text(size=12),
+                    axis.title.y = element_text(size=12),
+                    legend.text=element_text(size=12),
+                    legend.title = element_text(size=12),
+                    text=element_text(size=16,  family="Palatino Linotype")) +
+  scale_color_manual(labels = c("layered", "measured", "not layered"), 
+                     values = c("darkorange", "violetred1", 'cornflowerblue'), 
+                     aesthetics = c("colour", "fill"),
+                     name = "coupon populations")  +
+  annotate("point", x = TSFrealPtEst, y = rep(-.17, 24), pch = "|", col = "maroon3", cex = 2.2)
+p
+
+ggsave("font_ggplot.pdf", plot=p,  width=4, height=4)
+
