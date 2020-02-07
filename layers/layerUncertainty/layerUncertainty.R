@@ -17,6 +17,7 @@ setwd("C:/Users/barna/Documents/Coupons/layers/layerFunctions")
 load("couponCov.rda")
 source("calculateTestStatistic.R")
 source("rotations.R")
+source("getKDE.R")
 
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty")
@@ -39,7 +40,7 @@ zeros <- which(couponCov$polarAngle == 0)
 
 N <- length(inputFiles[zeros]) #number of coupons in the sample size
 
-nsamples = 100
+nsamples = 1000
 
 TSZreal <- matrix(nrow = nsamples, ncol = N, NA) #test statistic (TS), zero degree, not layered
 
@@ -147,25 +148,26 @@ saveRDS(TSZreal, "TSZrealUncertainty.rds")
 ## 0 degree coupons, layered
 ## ------------------------------
 
-setwd("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/noLayers")
+setwd("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/spacing40to60")
 
 inputFiles <- list.files(full.names = TRUE)
 
 N <- length(inputFiles) #number of coupons in the sample size
 
+inputFiles <- sample(inputFiles, 100, replace = F)
+
+N <- length(inputFiles)
+
 nsamples = 10
 
-TSZlayers <- matrix(nrow = nsamples, ncol = 200, NA) #test statistic (TS), zero degree, not layered
+TSZlayers <- matrix(nrow = nsamples, ncol = N, NA) 
 
-l = 1 #dummy index to increment coupon number
-
-for(coupon in inputFiles[1:200]){
+j = 1
+for(coupon in inputFiles[5:100]){
   
   load(coupon)
   
-  print(paste('*******', l, '*******'))
-  
-  k = 1 #dummy index to increment TS
+  print(j)
   
   ## model output from first round of nls
   nlsTheta <- atan2(nlsCoupon[,2], nlsCoupon[,1])
@@ -173,23 +175,70 @@ for(coupon in inputFiles[1:200]){
   nlsR <- sqrt(nlsCoupon[,1]^2+nlsCoupon[,2]^2)
   
   
+  ## grab a KDE
+  
+  kdeobj <- getKDE(nlsCoupon, 0.07, 900, 300)
+  
+  kdeFhat <- kdeobj[[1]]
+  
+  kdeT <- kdeobj[[2]]
+  
+  kdeZ <- kdeobj[[3]]
+  
+  zN <- scale(nlsZ)
+  tN <- scale(nlsTheta)
+  
   ## begin the bootstrap for loop ------------
   
   
-  bootNlsCoef <- matrix(ncol = 5, nrow = length(nsamples), NA)
-  bootRadius <- matrix(ncol = length(nlsCoupon[,1]), nrow = length(nsamples), NA)
-  
-  
   for(i in 1:nsamples){
-    print(i)
     
-    j = 1
-    while(j < 10){ #try nls up to 10 times
+    sampledTZ <- sampleKDE(kdeFhat, kdeT, kdeZ, tN, zN)
+    
+    bootTheta <- sampledTZ[[1]]
+    bootZ <- sampledTZ[[2]]
+    
+    # fabricate new data by adding the sampled errors to the 
+    # model output
+    bootX <- nlsR*cos(bootTheta)
+    bootY <- nlsR*sin(bootTheta)
+    
+    bootCoupon <- cbind(bootX, bootY, bootZ)    
+    
+    # orient the bootCoupon so it matches the tilt in the 
+    # original data; that way, nlsCoeff will match taking 
+    # coupons from this original tilt -> alignment
+    bootCoupon <- getOldCoupon(bootCoupon, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
+                               nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])   
+    
+    
+    M <- length(oldCoupon[,1])
+    
+    startValues <- getInitialParameters(oldCoupon)
+    
+    
+    distTarget <- rep(0,M)
+    
+    nlsObj <- try(nls(distTarget~getDistance(oldCoupon, 
+                                             centroidX, centroidY, 
+                                             axisVectorX, axisVectorY, r),
+                      start = list(centroidX = startValues[4], 
+                                   centroidY = startValues[5],
+                                   axisVectorX = startValues[1], 
+                                   axisVectorY = startValues[2],
+                                   r = startValues[7]),
+                      control =  nls.control(minFactor = 1/10000000000)))
+
+    while(class(nlsObj) == "try-error"){ #try nls up to 10 times
+      
+      print("in the while loop")
       
       # generate stochastic data set by sampling possible
       # thetas from uniform(0, 2pi)
-      bootTheta <- runif( length(nlsCoupon[,1]),0,2*pi)
+      kdeSample <- getKDEzt(nlsCoupon, 0.07, 900, 300, length(nlsZ))
       
+      bootTheta <- kdeSample[[1]]
+      bootZ <- kdeSample[[2]]
       
       
       # fabricate new data by adding the sampled errors to the 
@@ -197,7 +246,7 @@ for(coupon in inputFiles[1:200]){
       bootX <- nlsR*cos(bootTheta)
       bootY <- nlsR*sin(bootTheta)
       
-      bootCoupon <- cbind(bootX, bootY, nlsZ)    
+      bootCoupon <- cbind(bootX, bootY, bootZ)    
       
       # orient the bootCoupon so it matches the tilt in the 
       # original data; that way, nlsCoeff will match taking 
@@ -225,41 +274,30 @@ for(coupon in inputFiles[1:200]){
                         control =  nls.control(minFactor = 1/10000000000)))
       
       
-      
-      
-      if(class(nlsObj) != "try-error"){ # since nls needs babysitting
         
         
-        if(j == 1){
-          
-          tempNlsCoeff <- coef(nlsObj)
-          
-          tempCoupon <- newCoupon(bootCoupon, tempNlsCoeff["centroidX"], tempNlsCoeff["centroidY"], 
-                                  tempNlsCoeff["axisVectorX"], tempNlsCoeff["axisVectorY"])
-          
-          TSZlayers[k,l] <- getTestStatistic(tempCoupon)
-          k = k + 1
-        }
-        
-        j <- j + 1
-      }
-      
-      
-      
-    } #end of while loop
+    }
     
-  } #end of bootstrap for loop
+    tempNlsCoeff <- coef(nlsObj)
+    
+    tempCoupon <- newCoupon(bootCoupon, tempNlsCoeff["centroidX"], tempNlsCoeff["centroidY"], 
+                            tempNlsCoeff["axisVectorX"], tempNlsCoeff["axisVectorY"])
+    
+    TSZlayers[i,j] <- getTestStatistic(tempCoupon)
+    
+    print("hit")
+      
+    rm(nlsObj)
+      
+    } #end of samples loop
+    
   
-  # calculate the test statistic
-  l = l + 1
-  
+  j=j+1
 }
 
 
-saveRDS(TSZlayers, "TSZnolayersUncertainty2.rds")
+saveRDS(TSZlayers, "TSZlayersUncertainty.rds")
 
-
-hist(TSZlayers)
 
 
 
@@ -272,11 +310,9 @@ TSZrealPtEst <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/0degr
 
 TSZreal <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/TSZrealUncertainty.rds")
 
-TSZlayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSZlayersUncertainty.rds")
-TSZnolayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSZnolayersUncertainty.rds")
-TSZnolayersTwo <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSZnolayersUncertainty2.rds")
+TSZlayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/TSZlayersUncertainty.rds")
 
-TSZnoLayers <- cbind(TSZnolayers, TSZnolayersTwo)
+TSZnoLayers <- readRDS(("C:/Users/barna/Documents/Coupons/layers/layerData/0degreeData/TSZnoLayers.rds"))
 
 
 dat <- rbind( cbind(as.vector(TSZlayers), rep(1,length(as.vector(TSZlayers)))),
@@ -295,7 +331,7 @@ font_import()
 loadfonts(device = "win")
 
 p <- ggplot(dat, aes(signal, fill=  population, col = population)) +
-  ggtitle(label = "Distribution of Signal Strength Test Statistic, 45 degreee Coupons") +
+  ggtitle(label = "Distribution of Signal Strength Test Statistic, 0 degreee Coupons") +
   labs(x = "signal strength", y = "density") +
   geom_density(alpha=0.2, kernel="gaussian", adjust=1.5) +
   theme_bw()+ theme(legend.justification = c(1,1), 
@@ -464,11 +500,55 @@ N <- length(inputFiles) #number of coupons in the sample size
 
 nsamples = 10
 
-angleSeq <- seq(0, 2*pi, length.out = 100) #increment by which we change rotation
+angleSeq <- seq(0, 2*pi, length.out = 10) #increment by which we change rotation
 
 tempTS <- rep(NA, 100) #store TS for each rotation
 
-TSFlayers <- matrix(nrow = nsamples, ncol = N, NA) #test statistic (TS), zero degree, not layered
+TSFlayers <- vector() #test statistic (TS), zero degree, not layered
+
+
+i = 1 #dummy index to increment TS
+
+for(coupon in inputFiles){
+  
+  load(coupon)
+  
+  print(i)
+  
+  # m = 1
+  # for(w in angleSeq){
+  #   
+  #   rotatedCoupon <- rotateFortyFive(w, nlsCoupon) #center and rotate the coupon
+  #   
+  #   tempTS[m] <- getTestStatistic(rotatedCoupon) #calc TS for rotated coupon
+  #   
+  #   m=m+1
+  # }
+  
+  TSFnolayers[i] <- getTestStatistic(nlsCoupon)
+  i = i + 1
+}
+
+saveRDS(TSFlayers, "TSFnolayers.rds")
+
+## 
+
+## ------------------------------
+## 45 degree coupons, no layers
+## ------------------------------
+setwd("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/noLayers")
+
+inputFiles <- list.files(full.names = TRUE)
+
+N <- length(inputFiles) #number of coupons in the sample size
+
+nsamples = 10
+
+angleSeq <- seq(0, 2*pi, length.out = 10) #increment by which we change rotation
+
+tempTS <- rep(NA, 10) #store TS for each rotation
+
+TSFnolayersSpin <- vector() #test statistic (TS), zero degree, not layered
 
 
 i = 1 #dummy index to increment TS
@@ -481,22 +561,20 @@ for(coupon in inputFiles){
   
   m = 1
   for(w in angleSeq){
-    
+
     rotatedCoupon <- rotateFortyFive(w, nlsCoupon) #center and rotate the coupon
-    
+
     tempTS[m] <- getTestStatistic(rotatedCoupon) #calc TS for rotated coupon
-    
+
     m=m+1
   }
   
-  TSFlayers[i] <- max(tempTS)
+  TSFnolayersSpin[i] <- max(tempTS)
+
   i = i + 1
 }
 
-saveRDS(TSFlayers, "TSFlayers.rds")
-
-## 
-
+saveRDS(TSFnolayersSpin, "TSFnolayers.rds")
 
 
 ## -----------------------------
@@ -504,7 +582,7 @@ saveRDS(TSFlayers, "TSFlayers.rds")
 ## -----------------------------
 
 TSFrealPtEst <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/TSFreal.rds")
-TSFreal <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerUncertainty/TSFreal.rds")
+TSFreal <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/TSFrealUncertainty.rds")
 
 TSFlayers <- readRDS("C:/Users/barna/Documents/Coupons/layers/layerData/45degreeData/TSFlayers.rds")
 TSFlayers <- TSFlayers[ , colSums(is.na(TSFlayers)) == 0]
