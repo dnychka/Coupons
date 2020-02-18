@@ -34,6 +34,7 @@ location[which(couponCov$polarAngle==0)]
 location[which(couponCov$polarAngle==45)]
 location[which(couponCov$polarAngle==90)][order(location[which(couponCov$polarAngle==90)])]
 
+location[17]
 
 ## -----------------------------------
 ## functions
@@ -66,7 +67,7 @@ for(folder in folderList){
   
   numTif <- length(rasterList)
   
-  rasterList <- rasterList[c(-(1:150),-(numTif:(numTif-150)))] #take off XCT artifacts at top and bottom
+  rasterList <- rasterList[c(-(1:100),-(numTif:(numTif-100)))] #take off XCT artifacts at top and bottom
   
   choice <- seq(1,length(rasterList),by=10) #subset the slices of the coupon
   
@@ -85,7 +86,7 @@ for(folder in folderList){
     
     X <- c(X,slice[,1])
     Y <- c(Y,slice[,2])
-    Z <- c(Z, rep(i, length(slice[,1])))
+    Z <- c(Z, rep(choice[i], length(slice[,1])))
   }
   endTime <- Sys.time()
   
