@@ -13,15 +13,16 @@ library(plyr)
 
 setwd("C:/Users/barna/Documents/Coupons/datasets")
 poreData <- readRDS("porosityData.rds")
+position <- readRDS("buildPlatePosition.rds")
 
 
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty")
-source("nlsFunctionsForSimulation.R") #lolol don't set wd in functions
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis")
+source("nlsFunctions.R") #lolol don't set wd in functions
 
 
 for(n in 1:58){
   
-print(n)
+print(position[n])
   
 ##--------------------------------------------------------------------
 ## crop coupon
@@ -35,7 +36,6 @@ nlsObj <- nlsAxisFit(poreCoordinates)
 
 nlsCoeff <- coef(nlsObj)
 
-
 ##--------------------------------------------------------------------
 ## store data
 ##--------------------------------------------------------------------
@@ -48,7 +48,7 @@ nlsCoupon <- newCoupon(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroi
 oldCoupon <- poreCoordinates
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/porosity/nlsPorosityData/cropped")
-save(oldCoupon, nlsCoupon, nlsCoeff, file = paste0("nlsCoupon", n, ".rda"))
+save(oldCoupon, nlsCoupon, nlsCoeff, file = paste0("nlsCoupon", position[n], ".rda"))
 
 } # end of for loop
 
