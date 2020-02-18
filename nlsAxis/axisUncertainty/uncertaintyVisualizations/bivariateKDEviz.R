@@ -5,11 +5,8 @@
 ##
 ##
 ##
-## implements bivariate kernel density estimate
-## for sampling from joint distribution of theta, z
+## KDE visualizations
 ## ------------------------------------------------------
-
-#library(ks) #inly needed for hpi bandwidth (not fully understood)
 
 library(scales)
 
@@ -19,33 +16,29 @@ library(fields)
 
 library(rgl)
 
-##
-## quick viz using rgl
-## -----------------------------------
+library(reshape2)
 
+library(ggplot2)
 
-load("couponsUsingKDESampling.rda")
+library(extrafont)
+loadfonts(device = "win")
 
-
-open3d()
-plot3d(simulatedCoupon[,1], simulatedCoupon[,2], simulatedCoupon[,3], type = "s", size = 0.45,
-       xlab = "simulated coupon", ylab= "", zlab="")
-
-
-open3d()
-plot3d(realCoupon[,1], realCoupon[,2], realCoupon[,3], type = "s", size=0.45,
-       xlab = "real coupon", ylab=" ", zlab=" ")
 
 ##
 ## implement KDE sampling
 ## ----------------------------------------
 
-load("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty/uncertaintyData/coupon4poreCI.rda")
-rm(bootCoefCI, bootNlsCoef, bootRadius, bootRadiusCI)
+setwd("C:/Users/barna/Documents/Coupons/nlsAxis/porosity/nlsPorosityData/cropped")
 
-  ## model output from first round of nls
-  nlsTheta <- atan2(nlsCoupon[,2], nlsCoupon[,1])
-  nlsZ <- nlsCoupon[,3]
+n = 11 #coupon F3
+
+load(paste0("./nlsCoupon", n, ".rda"))
+rm(oldCoupon, nlsCoeff)
+
+
+## model output from first round of nls
+nlsTheta <- atan2(nlsCoupon[,2], nlsCoupon[,1])
+nlsZ <- nlsCoupon[,3]
 
 
   ##
@@ -66,130 +59,86 @@ rm(bootCoefCI, bootNlsCoef, bootRadius, bootRadiusCI)
 
   ztMatBig <- rbind( cbind(tN - shift, zN), cbind(tN, zN), cbind(tN + shift, zN))
 
-  bw = 0.06
+  bw = 0.04
   grX = 900
   grY = 300
 
   kernd <- bkde2D(ztMatBig, bandwidth = bw, gridsize = c(grX,grY)) # note hardcoded bw & grdsize
   
-  kernd <- bkde2D(ztMat, bandwidth = 0.05, gridsize = c(100,100))
 
-image.plot(kernd$x1, kernd$x2, kernd$fhat,
-           main = "kde for z and theta, bw = hpi, grd = 1000",
-           xlab = "theta (normalized)", ylab = "z (normalized)")
-
- xline(c(max(tN), min(tN)), col = "white", lty=2)
+          # image.plot(kernd$x1, kernd$x2, kernd$fhat,
+          #            main = "kde for z and theta, bw = hpi, grd = 1000",
+          #            xlab = "theta (normalized)", ylab = "z (normalized)")
+          # 
+          #  xline(c(0, shift), col = "white", lty=2)
+          #  xline(c(min(tN), max(tN)), col = "white")
 
   ## chuck off the ends
   
-  kdeT <- kernd$x1[which(kernd$x1 <= max(tN) & (kernd$x1 >= min(tN))) ]
+  kdeT <- kernd$x1[which(kernd$x1 <= shift & (kernd$x1 >= 0)) ]
   kdeZ <- kernd$x2
   
-  kdeFhat <- kernd$fhat[which(kernd$x1 <= max(tN) & kernd$x1 >= min(tN)),]
-
-# check it
-
-image.plot(kdeT, kdeZ, (kdeFhat),
-           main = "Kernel Density Estimate, z and theta",
-           ylab = "z (normalized)", xlab = "theta (normalized)")
-
-# how to sample from this (strategy: Nychka email post Thanksgiving break)
-
-    totalDensity <- sum(kdeFhat)
-  
-  kerndProb <- (kdeFhat) / totalDensity
+  kdeFhat <- kernd$fhat[which(kernd$x1 <= shift & kernd$x1 >= 0),]
   
   
+## -------------------------------
+## make the ggplot
+## -------------------------------
   
-  numResamp <- 5000
+longData <- melt(kdeFhat)
   
-  test <- sample(kdeFhat, numResamp, replace = T, prob = kerndProb)
+names(longData) <- c("t", "z", "density")
   
+ctab = tim.colors(dim(longData)[1])
+
+tLabels <- c(quantile(kdeT, probs = c(0, 0.5, 1)))
+tLabels <- round(tLabels, 1)
+tLabels <- as.character(tLabels)
+
+zLabels <- c(quantile(kdeZ, probs = c(0, 0.5, 1))) 
+zLabels <- round(zLabels, 1)
+zLabels <- as.character(zLabels)
   
-  indZ <- vector()
-  indT <- vector()
+ggplot(longData, aes(x = t, y = z)) + 
+  geom_raster(aes(fill=density)) + 
+  scale_fill_gradientn(colors = ctab)+
+  theme_minimal() +
+  scale_x_continuous(name = "theta (normalized)",
+                   breaks = c(0, 150, 300),
+                   labels = tLabels)+
+  scale_y_continuous(name = "z (normalized)",
+                     breaks = c(0, 150, 300),
+                     labels = zLabels) +
+  ggtitle("Kernel Density Estimate for Coupon F3")+
+  theme(plot.title = element_text(size = 20),
+                            axis.text=element_text(size=16),
+                            axis.title.x = element_text(size=16),
+                            axis.title.y = element_text(size=16),
+                            legend.text=element_text(size=16),
+                            legend.title = element_text(size=16),
+                            text=element_text(size=16,  family="Palatino Linotype"))
+
+
   
-  for(i in 1:numResamp){
-   indT[i] <- which(kdeFhat == test[i], arr.ind=TRUE)[1]
-   indZ[i] <- which(kdeFhat == test[i], arr.ind=TRUE)[2]
-  }
+## ------------------------------
 
 
 
-par(mfrow=c(1,2))
-image.plot(kdeT, kdeZ, kdeFhat,
-           main = "",
-           xlab = "theta (normalized)", ylab = "z (normalized)")
-
-plot(kdeT[indT], kdeZ[indZ], pch = 20, col = alpha("black", 0.2))
 
 
-## 
+ggplot( NULL ) + 
+  geom_raster( data = kdf , aes( t , z , fill = density ) ) +
+  scale_fill_gradientn(colors = ctab)+
+  ggtitle("Surface Plot for Coupon F3")+
+  labs(x = "theta (normalized)", y = "z (normalized)") +
+  theme_minimal()   + theme(plot.title = element_text(size = 20),
+                            axis.text=element_text(size=16),
+                            axis.title.x = element_text(size=16),
+                            axis.title.y = element_text(size=16),
+                            legend.text=element_text(size=16),
+                            legend.title = element_text(size=16),
+                            text=element_text(size=16,  family="Palatino Linotype"))
 
-  
 
-## source code for kde smoothing from kernSmooth
-# function (x, bandwidth, gridsize = c(51L, 51L), range.x, truncate = TRUE) 
-# {
-#   if (!missing(bandwidth) && min(bandwidth) <= 0) 
-#     stop("'bandwidth' must be strictly positive")
-#   n <- nrow(x)
-#   M <- gridsize
-#   h <- bandwidth
-#   tau <- 3.4
-#   if (length(h) == 1L) 
-#     h <- c(h, h)
-#   if (missing(range.x)) {
-#     range.x <- list(0, 0)
-#     for (id in (1L:2L)) range.x[[id]] <- c(min(x[, id]) - 
-#                                              1.5 * h[id], max(x[, id]) + 1.5 * h[id])
-#   }
-#   a <- c(range.x[[1L]][1L], range.x[[2L]][1L])
-#   b <- c(range.x[[1L]][2L], range.x[[2L]][2L])
-#   gpoints1 <- seq(a[1L], b[1L], length = M[1L])
-#   gpoints2 <- seq(a[2L], b[2L], length = M[2L])
-#   gcounts <- linbin2D(x, gpoints1, gpoints2)
-#   L <- numeric(2L)
-#   kapid <- list(0, 0)
-#   for (id in 1L:2L) {
-#     L[id] <- min(floor(tau * h[id] * (M[id] - 1)/(b[id] - 
-#                                                     a[id])), M[id] - 1L)
-#     lvecid <- 0:L[id]
-#     facid <- (b[id] - a[id])/(h[id] * (M[id] - 1L))
-#     z <- matrix(dnorm(lvecid * facid)/bbh[id])
-#     tot <- sum(c(z, rev(z[-1L]))) * facid * h[id]
-#     kapid[[id]] <- z/tot
-#   }
-#   kapp <- kapid[[1L]] %*% (t(kapid[[2L]]))/n
-#   if (min(L) == 0) 
-#     warning("Binning grid too coarse for current (small) bandwidth: consider increasing 'gridsize'")
-#   P <- 2^(ceiling(log(M + L)/log(2)))
-#   L1 <- L[1L]
-#   L2 <- L[2L]
-#   M1 <- M[1L]
-#   M2 <- M[2L]
-#   P1 <- P[1L]
-#   P2 <- P[2L]
-#   rp <- matrix(0, P1, P2)
-#   rp[1L:(L1 + 1), 1L:(L2 + 1)] <- kapp
-#   if (L1) 
-#     rp[(P1 - L1 + 1):P1, 1L:(L2 + 1)] <- kapp[(L1 + 1):2, 
-#                                               1L:(L2 + 1)]
-#   if (L2) 
-#     rp[, (P2 - L2 + 1):P2] <- rp[, (L2 + 1):2]
-#   sp <- matrix(0, P1, P2)
-#   sp[1L:M1, 1L:M2] <- gcounts
-#   rp <- fft(rp)
-#   sp <- fft(sp)
-#   rp <- Re(fft(rp * sp, inverse = TRUE)/(P1 * P2))[1L:M1, 1L:M2]
-#   rp <- rp * matrix(as.numeric(rp > 0), nrow(rp), ncol(rp))
-#   list(x1 = gpoints1, x2 = gpoints2, fhat = rp)
-# }
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
+
+
