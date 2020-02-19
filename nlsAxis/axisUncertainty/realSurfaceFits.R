@@ -3,12 +3,12 @@
 ##
 ##
 ##
-## Monte Carlo, sampling theta and z from bivariate KDE
-## using surface coupon data
+## surface data uncertainty files
+## randomly sampling from the og surface read in by importTifs.R
 ### -------------------------------------------------------------------
 
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty")
-source("getKDEfunction.R")
+setwd("C:/Users/barna/Documents/Coupons/datasets")
+nPores <- readRDS("0and45degreePoreNumbers.rds")
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis")
 source("nlsFunctions.R") #lolol don't set wd in functions
@@ -20,15 +20,18 @@ source("nlsFunctions.R") #lolol don't set wd in functions
 
 setwd("C:/Users/barna/Documents/Coupons/nlsAxis/surfaces/nlsSurfaceData")
 
-couponList <- list.files(full.names = TRUE)
+couponList <- list.files(full.names = T)
 
+nInd <- 1 #dummy index to access vectors
 for(n in couponList){ # begin the coupon for loop
   
   setwd("C:/Users/barna/Documents/Coupons/nlsAxis/surfaces/nlsSurfaceData")
   
   load(n)
   
-  print(n)
+  print(names(nPores[nInd]))
+  
+  
   
   ## model output from first round of nls
   nlsTheta <- atan2(nlsCoupon[,2], nlsCoupon[,1])
@@ -40,7 +43,7 @@ for(n in couponList){ # begin the coupon for loop
   
   nsamples = 1000
   
-  nSurfacePxls = 2000
+  nSurfacePxls = nPores[nInd]
   
   simNlsCoef <- matrix(ncol = 5, nrow = nsamples, NA)
   simRadius <- matrix(ncol = nSurfacePxls, nrow = nsamples, NA)
@@ -52,7 +55,7 @@ for(n in couponList){ # begin the coupon for loop
     j = 1
     while(j < 25){ #try nls up to 25 times
       
-      bootCoupon <- oldCoupon[sample(oldCoupon, 2000, replace = F),]
+      bootCoupon <- oldCoupon[sample(oldCoupon, nPores[nInd], replace = F),]
       
       # estimate the parameter values for each new fabricated data set
       N <- length(bootCoupon[,1])
@@ -97,14 +100,17 @@ for(n in couponList){ # begin the coupon for loop
     
   } #end of bootstrap for loop
   
-  cNum <- gsub(".rda", "", gsub("./nlsSurfaceCoupon", "", n))
-  
+  couponName <- names(nPores[nInd])
   
   
   setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty/uncertaintyData/surfaces")
-  save(simNlsCoef, simRadius, nlsCoupon, file = paste0("coupon", cNum, "surfaceCI.rda"))
+  save(simNlsCoef, simRadius, file = paste0("coupon", couponName, "surfaceCI.rda"))
+  
+  
+  nInd <- nInd + 1
   
 } #end of coupon reading-in for loop
+
 
 
 
