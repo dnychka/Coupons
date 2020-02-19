@@ -7,14 +7,15 @@
 ## using real coupon data
 ### -------------------------------------------------------------------
 
-setwd("C:/Users/barna/Documents/Coupons/datasets")
-load("couponCov.rda")
+setwd("Z:/COUPONS/Coupons-master/datasets")
+nPores <- readRDS("0and45degreePoreNumbers.rds")
+position <- readRDS("buildPlatePosition.rds")
 
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty")
+setwd("Z:/COUPONS/Coupons-master/nlsAxis/axisUncertainty")
 source("getKDEfunction.R")
-source("getAccelerationFunction.R")
 
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis")
+
+setwd("Z:/COUPONS/Coupons-master/nlsAxis")
 source("nlsFunctions.R") #lolol don't set wd in functions
 
 
@@ -22,20 +23,19 @@ source("nlsFunctions.R") #lolol don't set wd in functions
 ## get the data
 ## --------------------------------------------------------------------
 
-setwd("C:/Users/barna/Documents/Coupons/nlsAxis/porosity/nlsPorosityData/cropped")
+setwd("Z:/COUPONS/Coupons-master/nlsAxis/porosity/nlsPorosityData/cropped/named")
 
 couponList <- list.files(full.names = TRUE)
 
-niceCoupon <- c(which(couponCov$polarAngle==0), which(couponCov$polarAngle==45))
+names(couponList) <- position[order(position)]
 
-couponList <- couponList[niceCoupon]
+couponList <- couponList[which(names(couponList) %in% names(nPores))]
 
 
+poreInd <- 1
 for(n in couponList){ # begin the coupon for loop
   
-  setwd("C:/Users/barna/Documents/Coupons/nlsAxis/porosity/nlsPorosityData/cropped")
-  
-  #load(paste0("./nlsCoupon", n, ".rda"))
+  setwd("Z:/COUPONS/Coupons-master/nlsAxis/porosity/nlsPorosityData/cropped/named")
   
   load(n)
   
@@ -111,8 +111,8 @@ for(n in couponList){ # begin the coupon for loop
         tempNlsCoeff <- coef(nlsObj)
         
         tempCoupon <- newCoupon(bootCoupon, tempNlsCoeff["centroidX"], tempNlsCoeff["centroidY"], 
-                                tempNlsCoeff["axisVectorX"], tempNlsCoeff["axisVectorY"])
-        tempRadius <- sqrt(tempCoupon[,1]^2+tempCoupon[,2]^2)
+           tempNlsCoeff["axisVectorX"], tempNlsCoeff["axisVectorY"])
+        tempRadius <- sqrt(                     tempCoupon[,1]^2+tempCoupon[,2]^2)
         
         simRadius[i,] <- tempRadius
         
@@ -128,45 +128,12 @@ for(n in couponList){ # begin the coupon for loop
 
 
 
-
-
-  ## ---------------------------------------------------------------------
-  ## compute bias-corrected and accelerated CI
-  ## ---------------------------------------------------------------------
-  setwd("C:/Users/barna/Documents/Coupons/datasets")
-  poreData <- readRDS("porosityData.rds")
-  
-  
-  print("here!")
-  
-  cNum <- as.numeric(gsub(".rda", "", gsub("./nlsCoupon", "", n)))
-  
-  poreCoordinates <- cropCoupon(cNum, poreData)
-  
-  aHat <- getAcceleration(poreCoordinates)
-  zHat <- vector()
-  for(i in 1:5){
-    zHat[i] <- qnorm(sum(ifelse(simNlsCoef[,i] < nlsCoeff[i], 1, 0))/nsamples)
-  }
-
-  
-  
-  paramCI <- matrix(nrow = 2, ncol = length(nlsCoeff), NA)
-  
-  alpha = 0.025 #significance level
-  
-  lo <- vector(); high <- vector()
-  for(i in 1:length(nlsCoeff)){
-    lo <- pnorm(zHat[i] + (zHat[i] + qnorm(alpha)) / (1 - aHat[i] * (zHat[i] + qnorm(alpha)) ))
-    high <- pnorm(zHat[i] + (zHat[i] + qnorm(1-alpha)) / (1 - aHat[i] * (zHat[i] + qnorm(1-alpha)) ))
-    
-    paramCI[,i] <- quantile(simNlsCoef[,i], c(lo, high))
-  }
   
  
-  setwd("C:/Users/barna/Documents/Coupons/nlsAxis/axisUncertainty/uncertaintyData")
-  save(paramCI, simNlsCoef, simRadius, poreCoordinates, file = paste0("coupon", cNum, "poreCI.rda"))
+  setwd("Z:/COUPONS/newporeuncertaintydata")
+  save(simNlsCoef, simRadius, file = paste0("coupon", names(nPores[poreInd]), "poreCI.rda"))
 
+  poreInd <- poreInd + 1
 
 } #end of coupon reading-in for loop
 
