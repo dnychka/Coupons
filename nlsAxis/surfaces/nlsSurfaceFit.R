@@ -57,7 +57,7 @@ for(folder in folderList){
   
   nlsObj <- nlsAxisFit(poreCoordinates)
   
-  nlsCoeff <- coef(nlsObj)
+  nlsCoeffBig <- coef(nlsObj)
   
   
   ##--------------------------------------------------------------------
@@ -66,8 +66,8 @@ for(folder in folderList){
   
   ## store the old coupon coordinates, the "new" rotated coupon coords, and the nls coeff
   ## useful for generating surface plots and histograms for each coupon
-  bigCoupon <- newCoupon(poreCoordinates, nlsCoeff["centroidX"], nlsCoeff["centroidY"], 
-                         nlsCoeff["axisVectorX"], nlsCoeff["axisVectorY"])
+  bigCoupon <- newCoupon(poreCoordinates, nlsCoeffBig["centroidX"], nlsCoeffBig["centroidY"], 
+                         nlsCoeffBig["axisVectorX"], nlsCoeffBig["axisVectorY"])
   
   oldCoupon <- poreCoordinates
   
@@ -97,7 +97,8 @@ for(folder in folderList){
   ##--------------------------------------------------------------------
   
   setwd("C:/Users/barna/Documents/Coupons/nlsAxis/surfaces/nlsSurfaceData")
-  save(bigCoupon, oldCoupon, nlsCoupon, nlsCoeff, file = paste0("nlsSurfaceCoupon", folder, ".rda"))
+  save(bigCoupon, oldCoupon, nlsCoupon, nlsCoeff, nlsCoeffBig, 
+       file = paste0("nlsSurfaceCoupon", folder, ".rda"))
   
   poreInd <- poreInd + 1
   
