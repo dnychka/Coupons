@@ -18,7 +18,7 @@ library(scatterplot3d)
 
 
 ## ----------------------------------------------------------
-## read in volume python files
+## read in volume python files (recon)
 ## ----------------------------------------------------------
 
 setwd("D:/recon/processed")
@@ -181,62 +181,101 @@ saveRDS(xyzg, file = "reconSurfacePixels.rds")
 
 
 
+## ----------------------------------------------------------
+## read in volume python files (scoutscan)
+## ----------------------------------------------------------
+
+setwd("D:/scoutscan/processed")
+
+
+np <- import("numpy")
+
+
+# data reading
+matConda <- np$load("scoutscanVolumePixels.npy")
+
+xyzg <- matrix(NA, nrow = 1, ncol = 4)
+
+numTif <- dim(matConda)[1]
+
+for(ind in 1:numTif){
+  
+  babyConda <- raster(matConda[ind,,])
+  
+  
+  whitePts <- rasterToPoints(babyConda, function(x){x!=0})
+  
+  if(dim(whitePts)[1] != 0){
+    
+    print(ind)
+    
+    # ridX <- (names(which(table(whitePts[,1]) > 100)))
+    # porePts <- whitePts[-which(whitePts[,1] %in% ridX),]
+    # 
+    
+    connectedPix <- extract(babyConda, SpatialPoints(whitePts[,1:2]), sp = T)
+    
+    numPts <- length(connectedPix@data$layer)
+    
+    xyzg <- rbind(xyzg, cbind(connectedPix@coords, rep(ind, numPts), connectedPix@data$layer))
+  }
+  
+}
+
+rm(matConda)
+gc()
+
+xyzg <- xyzg[-1,]
 
 
 
+## ----------------------------------------------------------
+## read in surface python files (scoutscan)
+## ----------------------------------------------------------
+
+setwd("D:/scoutscan/processed")
 
 
+np <- import("numpy")
 
 
+# data reading
+matConda <- np$load("scoutscanSurfacePixels.npy")
+
+xyzg <- matrix(NA, nrow = 1, ncol = 4)
+
+numTif <- dim(matConda)[1]
+
+for(ind in 1:numTif){
+  
+  babyConda <- raster(matConda[ind,,])
+  
+  
+  whitePts <- rasterToPoints(babyConda, function(x){x!=0})
+  
+  if(dim(whitePts)[1] != 0){
+    
+    print(ind)
+    
+    # ridX <- (names(which(table(whitePts[,1]) > 100)))
+    # porePts <- whitePts[-which(whitePts[,1] %in% ridX),]
+    # 
+    
+    connectedPix <- extract(babyConda, SpatialPoints(whitePts[,1:2]), sp = T)
+    
+    numPts <- length(connectedPix@data$layer)
+    
+    xyzg <- rbind(xyzg, cbind(connectedPix@coords, rep(ind, numPts), connectedPix@data$layer))
+  }
+  
+}
+
+rm(matConda)
+gc()
+
+xyzg <- xyzg[-1,]
 
 
+ctab <- color.scale(xyzg[,4])
 
-
-
-
-
-
-
-
-
-
-
-ctab = color.scale(xyzg[,4])
-
-scatter3d(xyzg[,1], xyzg[,3], xyzg[,2], surface = F, point.col = ctab)
-
-
-# shringake pores
-
-fewPores <- which(xyzg[,4] == 62 | xyzg[,4] == 1)
-
-scatter3d(xyzg[fewPores,1], xyzg[fewPores,2], xyzg[fewPores,3], surface = F, point.col="black")
-
-
-
-# crop out small small pores
-
-bigPoreNames<-names(which(table(xyzg[,4]) > 100))
-
-bigPoreNames <- bigPoreNames[-which(bigPoreNames=="118" | bigPoreNames =="188")] # for now, crop out the false pore which is the biggest also
-
-bigPores <- which(xyzg[,4] %in% bigPoreNames)
-
-ctab <- color.scale(xyzg[bigPores,4])
-
-scatter3d(xyzg[bigPores,1], xyzg[bigPores,2], xyzg[bigPores,3], surface = F, point.col = ctab)
-
-
-## looking at the false pores...really need to figure out how to crop
-## those verticle white bars BEFORE python processing
-
-biggestPore <- which(xyzg[,4] == 118)
-
-scatter3d(xyzg[biggestPore,1], xyzg[biggestPore,2], xyzg[biggestPore,3], surface = F, point.col = "black")
-
-which.max(table(xyzg[bigPores,4]))
-
-secondBiggestPore <- which(xyzg[,4]==188)
-
-scatter3d(xyzg[secondBiggestPore,1], xyzg[secondBiggestPore,2], xyzg[secondBiggestPore,3], surface = F, point.col = "black")
-
+scatter3d(xyzg[,1], xyzg[,2], xyzg[,3], surface = F, point.col = ctab)
